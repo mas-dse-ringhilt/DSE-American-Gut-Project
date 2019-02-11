@@ -119,3 +119,7 @@ dmypy.json
 .pyre/
 
 .idea
+american_gut_project/data/*
+!american_gut_project/data/__init__.py
+american_gut_project/models/*
+!american_gut_project/models/__init__.py
