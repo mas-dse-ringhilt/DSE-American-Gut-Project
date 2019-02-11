@@ -119,6 +119,8 @@ dmypy.json
 .pyre/
 
 .idea
+AGP/microbiome_graph.tsv
+
 american_gut_project/data/*
 !american_gut_project/data/__init__.py
 american_gut_project/models/*
