@@ -65,4 +65,4 @@ def load_w2v_model(filename):
 
 
 if __name__ == '__main__':
-    upload_file('test.txt', profile_name='dse')
+    upload_file('agp_only_meta.csv', profile_name='dse')
