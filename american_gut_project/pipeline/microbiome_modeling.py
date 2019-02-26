@@ -2,6 +2,8 @@ from random import shuffle
 
 import gensim
 import pandas as pd
+import itertools
+from gensim.models.poincare import PoincareModel
 
 from american_gut_project.persist import save_w2v_model, load_dataframe
 
@@ -32,6 +34,29 @@ def build_microbiome_embeddings():
     model = gensim.models.Word2Vec(generated_sentences, size=100, min_count=2, window=100, workers=4, sg=0)
     model.train(generated_sentences, total_examples=len(sentences), epochs=5)
     save_w2v_model(model, 'microbiome_w2v.model')
+    
+
+def otu_transitive_closure(samples):
+    """ Build the transitive closure for the OTU coocurrence graph. If OTUs
+        cooccur in the same microbiome sample they share an edge with each
+        other. Assumes each microbiome sample has its own colum and each 
+        OTU is a row. 
+    """
+    edges = []
+    for sample in range(len(samples.columns)):
+        verticies = list(samples[sample][samples[sample] > 0])
+        verticies = [str(x) for x in verticies]
+        if len(verticies) > 1:
+            edges.append(list(itertools.permutations(verticies, 2)))
+    return [x for sample in edges for x in sample]
+
+
+def build_poincare_embedding(samples):
+    graph = otu_transitive_closure(samples)
+    poincare_model = PoincareModel(graph, burn_in=10, negative=10, alpha=1)
+    poincare_model.train(epochs=50)
+    save_w2v_model(poincare_model, 'microbiome_poincare.model')
+
 
 if __name__ == '__main__':
     build_microbiome_embeddings()

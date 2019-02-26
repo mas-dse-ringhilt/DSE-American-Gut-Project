@@ -2,7 +2,7 @@ from american_gut_project.persist import download_file
 
 
 def fetch_metadata(profile_name='default'):
-    download_file('AGP_metdata.csv', profile_name)
+    download_file('agp_only_meta.csv', profile_name)
 
 
 def fetch_drug_data(profile_name='default'):
