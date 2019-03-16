@@ -1,4 +1,4 @@
-from american_gut_project.persist import load_dataframe, download_file
+from american_gut_project.persist import load_dataframe, download_file, save_dataframe
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
@@ -56,6 +56,9 @@ def join_and_split(x, y, label):
     data = pd.DataFrame(data)
     y_joined = pd.DataFrame(data[label])
     x_joined = data.drop(labels=label, axis=1)
+
+    save_dataframe(data, "{}_training_df.csv".format(label))
+
     # create train/test sets
     x_train, x_test, y_train, y_test = train_test_split(x_joined, y_joined, test_size=0.33, random_state=1)
     return x_train, x_test, y_train, y_test
@@ -89,14 +92,15 @@ def main():
         x = build_features('id_clean_biom_v4.pkl')
     except FileNotFoundError:
         print('Local files not found. Downloading from S3')
-        download_files(files, profile_name='default')
+        download_files(files, profile_name='dse')
         y, label = build_label('agp_only_meta.csv', 'ibd', 'Stool')
         x = build_features('id_clean_biom_v4.pkl')
     # join data + test train split
-    x_train, x_test, y_train, y_test = join_and_split(x, y, label)
-    # train model and report results
-    clf = train_model(x_train, y_train)
-    test_model(clf, x_test, y_test)
+    # x_train, x_test, y_train, y_test = join_and_split(x, y, label)
+    #
+    # # train model and report results
+    # clf = train_model(x_train, y_train)
+    # test_model(clf, x_test, y_test)
 
 
 if __name__ == '__main__':

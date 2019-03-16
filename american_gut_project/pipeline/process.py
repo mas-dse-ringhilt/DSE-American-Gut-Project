@@ -1,22 +1,46 @@
-from american_gut_project.persist import load_dataframe
+import pkg_resources
+import pickle
+
+import luigi
+import pandas as pd
+
+from american_gut_project.pipeline.fetch import FetchData
 
 
-def process_metadata():
-    df = load_dataframe('AGP_metdata.csv')
+class BiomDim(luigi.Task):
+    aws_profile = luigi.Parameter(default='default')
 
-    print(df)
+    def output(self):
+        paths = [
+            'biom_dim.pkl',
+            'sequences.pkl'
+        ]
 
+        outputs = [pkg_resources.resource_filename('american_gut_project.data', p) for p in paths]
+        return [luigi.LocalTarget(output) for output in outputs]
 
-def process_drug_data():
-    df = load_dataframe('drug_data_dense.csv')
+    def requires(self):
+        return FetchData(filename='id_clean_biom_v4.pkl', aws_profile=self.aws_profile)
 
-    print(df)
+    def run(self):
+        sequence = {}
+        # ignore_columns = ['sample_name', 'sample_id']
+        df = pd.read_pickle(self.input().fn)
 
+        for i in range(len(df.columns)):
+            sequence[df.columns[i]] = i
 
-def process_biome_data():
-    df = load_dataframe('biom_table.pkl')
+        new_columns = []
+        for col in df.columns:
+            new_columns.append(sequence[col])
 
-    print(df)
+        df.columns = new_columns
+
+        biom_dim_path, sequences_path = self.output()[0].fn, self.output()[1].fn
+        df.to_pickle(biom_dim_path)
+        pickle.dump(sequence, open(sequences_path, 'wb'))
+
 
 if __name__ == '__main__':
-    process_biome_data()
+    luigi.build([BiomDim(aws_profile='dse')], local_scheduler=True)
+

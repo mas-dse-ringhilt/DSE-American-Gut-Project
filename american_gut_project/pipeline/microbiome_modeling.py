@@ -1,6 +1,7 @@
 from random import shuffle
 
 import gensim
+import luigi
 import pandas as pd
 import itertools
 from gensim.models.poincare import PoincareModel

@@ -12,6 +12,10 @@ setup(
     # Insert dependencies list here
     install_requires=[
         'boto3',
-        'pandas'
+        'pandas',
+        'gensim',
+        'sklearn',
+        'tables',
+        'luigi'
     ],
 )
