@@ -74,32 +74,35 @@ class Labels(luigi.Task):
         label_stats_df.to_csv(stats_path)
 
 
-class TrainingData(luigi.Task):
+class BuildTrainingData(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
+    target = luigi.Parameter()
 
-    # def output(self):
-    #     paths = [
-    #         'labeled_metadata.csv',
-    #         'label_statistics.csv'
-    #     ]
-    #
-    #     outputs = [pkg_resources.resource_filename('american_gut_project.data', p) for p in paths]
-    #     return [luigi.LocalTarget(output) for output in outputs]
+    def output(self):
+        filename = "{}_training_data.pkl".format(self.target)
+        local_file_path = pkg_resources.resource_filename('american_gut_project.data', filename)
+        return luigi.LocalTarget(local_file_path)
 
     def requires(self):
         return [
-            FetchData(filename='agp_only_meta.csv', aws_profile=self.aws_profile),
+            Labels(aws_profile=self.aws_profile),
             BiomDim(aws_profile=self.aws_profile)
         ]
 
     def run(self):
-        metadata, biom = self.input()[0].fn, self.input()[1][0].fn
+        labels, biom = self.input()[0][0].fn, self.input()[1][0].fn
         biom = pd.read_pickle(biom)
-        biom = biom.drop(labels='sample_name', axis=1)
-        x = biom.set_index('sample_id')
-        x = x.fillna(0)
+        labels = pd.read_csv(labels, index_col=0)
 
-        print('hi')
+        # Duplicate sample ids for some reason
+        biom = biom.loc[biom['sample_id'].drop_duplicates().index]
+        biom = biom.set_index('sample_id')
+
+        target = labels[['sample_id', self.target]]
+        target = target.loc[target[self.target].dropna().index]
+        training_data = biom.merge(target, left_on='sample_id', right_on='sample_id')
+
+        training_data.to_pickle(self.output().fn)
 
 if __name__ == '__main__':
-    luigi.build([Labels(aws_profile='dse')], local_scheduler=True)
+    luigi.build([BuildTrainingData(aws_profile='dse', target='add_adhd')], local_scheduler=True)

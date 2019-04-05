@@ -24,15 +24,19 @@ class BiomDim(luigi.Task):
 
     def run(self):
         sequence = {}
-        # ignore_columns = ['sample_name', 'sample_id']
+        ignore_columns = ['sample_name', 'sample_id']
         df = pd.read_pickle(self.input().fn)
 
-        for i in range(len(df.columns)):
-            sequence[df.columns[i]] = i
-
         new_columns = []
-        for col in df.columns:
-            new_columns.append(sequence[col])
+        for i in range(len(df.columns)):
+
+            column = df.columns[i]
+            if column in ignore_columns:
+                new_columns.append(column)
+
+            else:
+                sequence[column] = i
+                new_columns.append(i)
 
         df.columns = new_columns
 
