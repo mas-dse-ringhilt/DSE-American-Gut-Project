@@ -4,6 +4,7 @@ import boto3
 import luigi
 
 from american_gut_project.persist import download_file
+from american_gut_project.paths import paths
 
 BUCKET_NAME = 'dse-cohort4-group1'
 
@@ -13,7 +14,7 @@ class FetchData(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
 
     def output(self):
-        local_file_path = pkg_resources.resource_filename('american_gut_project.data', self.filename)
+        local_file_path = paths.output(self.filename)
         return luigi.LocalTarget(local_file_path)
 
     def run(self):

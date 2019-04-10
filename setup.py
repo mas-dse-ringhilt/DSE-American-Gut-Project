@@ -16,6 +16,13 @@ setup(
         'gensim',
         'sklearn',
         'tables',
-        'luigi'
+        'luigi',
+        'setuptools-docker'
     ],
+
+    entry_points={
+        'setuptools_docker.train': [
+            'entrypoint = american_gut_project.pipeline.embedding.w2v:main',
+        ],
+    }
 )

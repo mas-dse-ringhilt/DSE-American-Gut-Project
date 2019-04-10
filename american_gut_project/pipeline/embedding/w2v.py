@@ -1,17 +1,13 @@
 import pkg_resources
-import pickle
-from random import shuffle
+import datetime
 
 import gensim
 import luigi
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
 
-from american_gut_project.pipeline.dataset import BuildTrainingData
 from american_gut_project.pipeline.process import BiomDim
+from american_gut_project.paths import paths
 
 # def build_microbiome_embeddings():
 #     # pull table from local file
@@ -42,87 +38,16 @@ from american_gut_project.pipeline.process import BiomDim
 #
 
 
-def build_sentences(df):
-    sentences = []
-    for i in range(len(df)):
-        sentence = []
-        samples_with_values = df.iloc[i][df.iloc[i] > 0]
-
-        for j in range(len(samples_with_values)):
-            sample = [str(samples_with_values.index[j])]
-            value = samples_with_values.iloc[j]
-
-            sentence += sample * int(value)
-
-        sentences.append(sentence)
-
-    return sentences
-
-
-def apply_model(sentences, model):
-
-    sample_vectors = []
-    for sentence in sentences:
-
-        sentence_vector = []
-        for word in sentence:
-            word_vector = model.wv[word]
-            sentence_vector.append(word_vector)
-
-        mean_vector = np.mean(sentence_vector, axis=0)
-        sample_vectors.append(mean_vector)
-
-    return sample_vectors
-
-# TODO
-# class Sentences(luigi.Task):
-#     aws_profile = luigi.Parameter(default='default')
-#
-#     def output(self):
-#
-#         sentences_path = pkg_resources.resource_filename('american_gut_project.data', 'sentences.pkl')
-#
-#         outputs = [w2v_model_path, w2v_biom_path]
-#         return [luigi.LocalTarget(output) for output in outputs]
-#
-#     def requires(self):
-#         return BiomDim(aws_profile=self.aws_profile)
-#
-#     def run(self):
-#         df = pd.read_pickle(self.input()[0].fn)
-#         df = df.drop('sample_name', axis=1)
-#         df = df.loc[df['sample_id'].drop_duplicates().index]
-#         df = df.set_index('sample_id')
-#
-#         # replace nans with zeros
-#         df = df.fillna(0)
-#
-#         print('building sentences')
-#         sentences = build_sentences(df)
-#
-#         print('training')
-#         model = gensim.models.Word2Vec(sentences, size=100, min_count=1, window=100, workers=4, sg=0)
-#         model.train(sentences, total_examples=len(sentences), epochs=5)
-#         model.save(self.output()[0].path)
-#
-#         sample_vectors = apply_model(sentences, model)
-#         sample_df = pd.DataFrame(data=sample_vectors, index=df.index)
-#         sample_df.to_pickle(self.output()[1].path)
-
-class W2V(luigi.Task):
+class SubSentence(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
+    min_value = luigi.IntParameter()
+    max_value = luigi.IntParameter()
+    use_value = luigi.BoolParameter(default='False')
 
     def output(self):
-        paths = [
-            'w2v.model',
-            'w2v_biom.pkl'
-        ]
-
-        w2v_model_path = pkg_resources.resource_filename('american_gut_project.model', paths[0])
-        w2v_biom_path = pkg_resources.resource_filename('american_gut_project.data', paths[1])
-
-        outputs = [w2v_model_path, w2v_biom_path]
-        return [luigi.LocalTarget(output) for output in outputs]
+        filename = "sentences_{}_{}_{}.cor".format(self.min_value, self.max_value, self.use_value)
+        local_file_path = paths.output(filename)
+        return luigi.LocalTarget(local_file_path)
 
     def requires(self):
         return BiomDim(aws_profile=self.aws_profile)
@@ -133,21 +58,153 @@ class W2V(luigi.Task):
         df = df.loc[df['sample_id'].drop_duplicates().index]
         df = df.set_index('sample_id')
 
-        # replace nans with zeros
-        df = df.fillna(0)
+        df = df[self.min_value:self.max_value]
 
         print('building sentences')
-        sentences = build_sentences(df)
+        with open(self.output().path, 'w') as f:
+            build_sentences(df, f, use_value=self.use_value)
 
-        print('training')
-        model = gensim.models.Word2Vec(sentences, size=100, min_count=1, window=100, workers=4, sg=0)
-        model.train(sentences, total_examples=len(sentences), epochs=5)
-        model.save(self.output()[0].path)
 
-        sample_vectors = apply_model(sentences, model)
-        sample_df = pd.DataFrame(data=sample_vectors, index=df.index)
-        sample_df.to_pickle(self.output()[1].path)
+def build_sentences(df, file_handler, use_value=False):
+    start_time = datetime.datetime.now()
+    if use_value:
+        print('using value')
+
+    for i in range(len(df)):
+        if i % 1000 == 0:
+            marker = datetime.datetime.now()
+            print(marker - start_time)
+            print(i)
+
+        if use_value:
+            print(i)
+            samples_with_values = df.iloc[i].dropna()
+
+            samples = []
+            for j in range(len(samples_with_values)):
+
+                sample = [str(samples_with_values.index[j])]
+                value = samples_with_values.iloc[j]
+
+                sample = sample * int(value)
+                samples += sample
+
+            sentence = ' '.join(samples)
+            file_handler.write(sentence + '\n')
+
+        else:
+            print(i)
+            sentence = ' '.join(df.iloc[i].dropna().index.astype(str))
+            file_handler.write(sentence + '\n')
+
+
+class Sentences(luigi.Task):
+    aws_profile = luigi.Parameter(default='default')
+    use_value = luigi.BoolParameter(default='False')
+
+    def output(self):
+        filename = "sentences_{}.cor".format(self.use_value)
+        local_file_path = paths.output(filename)
+        return luigi.LocalTarget(local_file_path)
+
+    def requires(self):
+        task_list = []
+        for i in range(0, 15000, 1000):
+            task = SubSentence(aws_profile=self.aws_profile,
+                               use_value=self.use_value,
+                               min_value=i,
+                               max_value=i+1000)
+
+            task_list.append(task)
+        return task_list
+
+    def run(self):
+        with open(self.output().path, 'w') as outfile:
+            for input_file in self.input():
+                with open(input_file.fn) as f:
+                    sentences = f.read()
+                    outfile.write(sentences)
+
+
+class TrainW2V(luigi.Task):
+    aws_profile = luigi.Parameter(default='default')
+    use_value = luigi.BoolParameter(default='False')
+    min_count = luigi.IntParameter(default=1)
+    size = luigi.IntParameter(default=100)
+    epochs = luigi.IntParameter(default=5)
+
+    def output(self):
+        filename = "w2v_{}_{}_{}_{}.model".format(self.use_value, self.min_count, self.size, self.epochs)
+        local_file_path = paths.output(filename)
+        return luigi.LocalTarget(local_file_path)
+
+    def requires(self):
+        return Sentences(aws_profile=self.aws_profile, use_value=self.use_value)
+
+    def run(self):
+        sentences = self.input().path
+        model = gensim.models.Word2Vec(min_count=self.min_count, size=self.size, workers=4)
+        model.build_vocab(corpus_file=sentences)
+        model.train(corpus_file=sentences, total_examples=model.corpus_count, total_words=len(model.wv.index2entity), epochs=self.epochs)
+        model.save(self.output().path)
+
+
+class EmbedBiom(luigi.Task):
+    aws_profile = luigi.Parameter(default='default')
+    use_value = luigi.BoolParameter(default='False')
+    min_count = luigi.IntParameter(default=1)
+    size = luigi.IntParameter(default=100)
+    epochs = luigi.IntParameter(default=5)
+
+    def output(self):
+        filename = "biom_dim_w2v_{}_{}_{}_{}.pkl".format(self.use_value, self.min_count, self.size, self.epochs)
+        local_file_path = paths.output(filename)
+        return luigi.LocalTarget(local_file_path)
+
+    def requires(self):
+        return [
+            BiomDim(aws_profile=self.aws_profile),
+            TrainW2V(aws_profile=self.aws_profile, use_value=self.use_value, min_count=self.min_count, size=self.size, epochs=self.epochs)
+        ]
+
+    def run(self):
+        model = gensim.models.Word2Vec.load(self.input()[1].fn)
+
+        def embed(row):
+            sentence = row.dropna().index.astype(str)
+
+            word_vectors = []
+            for word in sentence:
+                if word in model.wv:
+                    word_vector = model.wv[word]
+                    word_vectors.append(word_vector)
+
+            return pd.Series(np.mean(word_vectors, axis=0))
+
+        df = pd.read_pickle(self.input()[0][0].fn)
+        df = df.drop('sample_name', axis=1)
+        df = df.loc[df['sample_id'].drop_duplicates().index]
+        df = df.set_index('sample_id')
+
+        embedded_df = pd.DataFrame(df.apply(embed, axis=1))
+        embedded_df.to_pickle(self.output().path)
 
 
 if __name__ == '__main__':
-    luigi.build([W2V(aws_profile='dse')], local_scheduler=True)
+    luigi.build([
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=5),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=50, epochs=5),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=200, epochs=5),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=300, epochs=5),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=10),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=15),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=20),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=5),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=50, epochs=5),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=200, epochs=5),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=300, epochs=5),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=100, epochs=10),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=100, epochs=15),
+        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=100, epochs=20)
+
+    ], workers=3, local_scheduler=True)

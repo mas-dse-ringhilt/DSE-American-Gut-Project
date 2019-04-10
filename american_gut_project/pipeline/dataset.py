@@ -5,6 +5,7 @@ import pandas as pd
 
 from american_gut_project.pipeline.fetch import FetchData
 from american_gut_project.pipeline.process import BiomDim
+from american_gut_project.paths import paths
 
 LABEL_DICT = {
     'Yes': 1,
@@ -29,12 +30,12 @@ class Labels(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
 
     def output(self):
-        paths = [
+        output_paths = [
             'labeled_metadata.csv',
             'label_statistics.csv'
         ]
 
-        outputs = [pkg_resources.resource_filename('american_gut_project.data', p) for p in paths]
+        outputs = [paths.output(p) for p in output_paths]
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
@@ -80,7 +81,7 @@ class BuildTrainingData(luigi.Task):
 
     def output(self):
         filename = "{}_training_data.pkl".format(self.target)
-        local_file_path = pkg_resources.resource_filename('american_gut_project.data', filename)
+        local_file_path = paths.output(filename)
         return luigi.LocalTarget(local_file_path)
 
     def requires(self):

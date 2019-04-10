@@ -5,18 +5,19 @@ import luigi
 import pandas as pd
 
 from american_gut_project.pipeline.fetch import FetchData
+from american_gut_project.paths import paths
 
 
 class BiomDim(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
 
     def output(self):
-        paths = [
+        output_paths = [
             'biom_dim.pkl',
             'sequences.pkl'
         ]
 
-        outputs = [pkg_resources.resource_filename('american_gut_project.data', p) for p in paths]
+        outputs = [paths.output(p) for p in output_paths]
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):

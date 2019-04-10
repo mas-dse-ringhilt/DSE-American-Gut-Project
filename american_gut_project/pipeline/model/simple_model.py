@@ -5,9 +5,10 @@ import luigi
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 
 from american_gut_project.pipeline.dataset import BuildTrainingData
+from american_gut_project.paths import paths
 
 
 class SimpleModel(luigi.Task):
@@ -15,12 +16,12 @@ class SimpleModel(luigi.Task):
     target = luigi.Parameter()
 
     def output(self):
-        paths = [
+        output_paths = [
             "{}_simple_model.pkl".format(self.target),
             "{}_simple_model_metrics.txt".format(self.target)
         ]
 
-        outputs = [pkg_resources.resource_filename('american_gut_project.data', p) for p in paths]
+        outputs = [paths.output(p) for p in output_paths]
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
@@ -59,4 +60,4 @@ class SimpleModel(luigi.Task):
 
 
 if __name__ == '__main__':
-    luigi.build([SimpleModel(aws_profile='dse', target='add_adhd')], local_scheduler=True)
+    luigi.build([SimpleModel(aws_profile='dse', target='ibd')], local_scheduler=True)
