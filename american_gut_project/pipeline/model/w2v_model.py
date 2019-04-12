@@ -1,32 +1,52 @@
-import pkg_resources
 import pickle
 
 import luigi
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble.forest import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score
-from sklearn.model_selection import GridSearchCV
 
 from american_gut_project.pipeline.dataset import BuildTrainingData
 from american_gut_project.pipeline.embedding.w2v import EmbedBiom
 from american_gut_project.paths import paths
+from american_gut_project.pipeline.metrics import evaluate
 
 
-class W2VModel(luigi.Task):
+class W2VRandomForest(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
+
+    # W2V Parameters
     use_value = luigi.BoolParameter(default=False)
     min_count = luigi.IntParameter(default=1)
     size = luigi.IntParameter(default=100)
     epochs = luigi.IntParameter(default=5)
 
+    # Random Forest Parameters
+    n_estimators = luigi.IntParameter(default=10)
+    max_depth = luigi.IntParameter(default=None)
+    min_samples_split = luigi.IntParameter(default=2)
+    min_samples_leaf = luigi.IntParameter(default=1)
+
+    def name(self):
+        w2v_params = "{}_{}_{}_{}".format(self.use_value, self.min_count, self.size, self.epochs)
+        rf_params = "{}_{}_{}_{}".format(self.n_estimators, self.max_depth, self.min_samples_split, self.min_samples_leaf)
+        return "{}_w2v_{}_{}".format(self.target, w2v_params, rf_params)
+
+    def param_string(self):
+        return "use_value:{} min_count:{} size:{} epochs:{} n_estimators:{} " \
+               "max_depth:{} min_samples_split:{} min_samples_leaf:{}".format(self.use_value,
+                                                                              self.min_count,
+                                                                              self.size,
+                                                                              self.epochs,
+                                                                              self.n_estimators,
+                                                                              self.max_depth,
+                                                                              self.min_samples_split,
+                                                                              self.min_samples_leaf)
 
     def output(self):
         output_paths = [
-            "{}_w2v_{}_{}_{}_{}_model.pkl".format(self.target, self.use_value, self.min_count, self.size, self.epochs),
-            "{}_w2v_{}_{}_{}_{}_model_metrics.csv".format(self.target, self.use_value, self.min_count, self.size, self.epochs)
+            "{}_rf_model.pkl".format(self.name()),
+            "{}_rf_model_metrics.csv".format(self.name())
         ]
 
         outputs = [paths.output(p) for p in output_paths]
@@ -54,65 +74,37 @@ class W2VModel(luigi.Task):
 
         x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=1)
 
-        clf = RandomForestClassifier()
+        clf = RandomForestClassifier(
+            n_estimators=self.n_estimators,
+            max_depth=self.max_depth,
+            min_samples_split=self.min_samples_split,
+            min_samples_leaf=self.min_samples_leaf,
+            n_jobs=-1
+        )
         clf.fit(x_train, y_train)
 
         model_file = self.output()[0].path
         with open(model_file, 'wb') as f:
             pickle.dump(clf, f)
 
-        predictions = clf.predict(x_train)
-        train_tn, train_fp, train_fn, train_tp = confusion_matrix(y_train, predictions).ravel()
-        train_accuracy = accuracy_score(y_train, predictions)
-        train_precision = precision_score(y_train, predictions)
-        train_recall = recall_score(y_train, predictions)
-
-        predictions = clf.predict(x_test)
-        test_tn, test_fp, test_fn, test_tp = confusion_matrix(y_test, predictions).ravel()
-        test_accuracy = accuracy_score(y_test, predictions)
-        test_precision = precision_score(y_test, predictions)
-        test_recall = recall_score(y_test, predictions)
-
-        result_dict = {
-            'name': ["{}_w2v_{}_{}_{}_{}_model.pkl".format(self.target, self.use_value, self.min_count, self.size, self.epochs)],
-            'train_true_negative': [train_tn],
-            'train_false_positive': [train_fp],
-            'train_false_negative': [train_fn],
-            'train_true_positive': [train_tp],
-            'train_accuracy': [train_accuracy],
-            'train_precision': [train_precision],
-            'train_recall': [train_recall],
-
-            'test_true_negative': [test_tn],
-            'test_false_positive': [test_fp],
-            'test_false_negative': [test_fn],
-            'test_true_positive': [test_tp],
-            'test_accuracy': [test_accuracy],
-            'test_precision': [test_precision],
-            'test_recall': [test_recall],
-
-        }
-
+        name = model_file.split('/')[-1]
+        metric_df = evaluate(clf, x_train, x_test, y_train, y_test, name, self.param_string())
         metrics_file = self.output()[1].path
-        metric_df = pd.DataFrame(result_dict)
+
         metric_df.to_csv(metrics_file, index=False)
 
 
 if __name__ == '__main__':
     luigi.build([
-        W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=1, size=100, epochs=5),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=1, size=100, epochs=5),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=1, size=50, epochs=5),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=1, size=200, epochs=5),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=1, size=300, epochs=5),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=1, size=100, epochs=10),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=1, size=100, epochs=15),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=1, size=100, epochs=20),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=1, size=100, epochs=5),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=2, size=50, epochs=5),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=2, size=200, epochs=5),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=2, size=300, epochs=5),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=2, size=100, epochs=10),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=2, size=100, epochs=15),
-        # W2VModel(aws_profile='dse', target='ibd', use_value=True, min_count=2, size=100, epochs=20)
-    ], local_scheduler=True, workers=3)
+        W2VRandomForest(aws_profile='dse',
+                        target='ibd',
+                        use_value=True,
+                        min_count=1,
+                        size=100,
+                        epochs=5,
+                        n_estimators=10,
+                        max_depth=None,
+                        min_samples_split=2,
+                        min_samples_leaf=1),
+
+    ], local_scheduler=True, workers=1)

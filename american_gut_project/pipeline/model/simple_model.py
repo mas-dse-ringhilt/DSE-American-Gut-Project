@@ -5,10 +5,10 @@ import luigi
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
 
 from american_gut_project.pipeline.dataset import BuildTrainingData
 from american_gut_project.paths import paths
+from american_gut_project.pipeline.metrics import evaluate
 
 
 class SimpleModel(luigi.Task):
@@ -46,17 +46,10 @@ class SimpleModel(luigi.Task):
         with open(model_file, 'wb') as f:
             pickle.dump(clf, f)
 
+        metric_df = evaluate(clf, x_train, x_test, y_train, y_test, "{}_simple_model.pkl".format(self.target))
+
         metrics_file = self.output()[1].path
-        with open(metrics_file, 'w') as f:
-            f.write("Label: {}\n".format(self.target))
-
-            predictions = clf.predict(x_train)
-            f.write('Training Set: \n')
-            f.write(classification_report(y_train, predictions))
-
-            predictions = clf.predict(x_test)
-            f.write('Test Set: \n')
-            f.write(classification_report(y_test, predictions))
+        metric_df.to_csv(metrics_file, index=False)
 
 
 if __name__ == '__main__':
