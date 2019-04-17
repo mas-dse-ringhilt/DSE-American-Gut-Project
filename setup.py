@@ -17,7 +17,8 @@ setup(
         'sklearn',
         'tables',
         'luigi',
-        'setuptools-docker'
+        'setuptools-docker',
+        'xgboost'
     ],
 
     entry_points={

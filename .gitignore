@@ -122,6 +122,7 @@ dmypy.json
 AGP/microbiome_graph.tsv
 
 data/*
+data_pre_new_data
 !data/__init__.py
 american_gut_project/model/*
 !american_gut_project/model/__init__.py

@@ -6,7 +6,7 @@ import luigi
 import pandas as pd
 import numpy as np
 
-from american_gut_project.pipeline.process import BiomDim
+from american_gut_project.pipeline.process import Biom
 from american_gut_project.paths import paths
 
 # def build_microbiome_embeddings():
@@ -50,14 +50,10 @@ class SubSentence(luigi.Task):
         return luigi.LocalTarget(local_file_path)
 
     def requires(self):
-        return BiomDim(aws_profile=self.aws_profile)
+        return Biom(aws_profile=self.aws_profile)
 
     def run(self):
-        df = pd.read_pickle(self.input()[0].fn)
-        df = df.drop('sample_name', axis=1)
-        df = df.loc[df['sample_id'].drop_duplicates().index]
-        df = df.set_index('sample_id')
-
+        df = pd.read_pickle(self.input().fn)
         df = df[self.min_value:self.max_value]
 
         print('building sentences')
@@ -163,7 +159,7 @@ class EmbedBiom(luigi.Task):
 
     def requires(self):
         return [
-            BiomDim(aws_profile=self.aws_profile),
+            Biom(aws_profile=self.aws_profile),
             TrainW2V(aws_profile=self.aws_profile, use_value=self.use_value, min_count=self.min_count, size=self.size, epochs=self.epochs)
         ]
 
@@ -181,10 +177,7 @@ class EmbedBiom(luigi.Task):
 
             return pd.Series(np.mean(word_vectors, axis=0))
 
-        df = pd.read_pickle(self.input()[0][0].fn)
-        df = df.drop('sample_name', axis=1)
-        df = df.loc[df['sample_id'].drop_duplicates().index]
-        df = df.set_index('sample_id')
+        df = pd.read_pickle(self.input()[0].fn)
 
         embedded_df = pd.DataFrame(df.apply(embed, axis=1))
         embedded_df.to_pickle(self.output().path)

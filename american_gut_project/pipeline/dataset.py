@@ -4,7 +4,7 @@ import luigi
 import pandas as pd
 
 from american_gut_project.pipeline.fetch import FetchData
-from american_gut_project.pipeline.process import BiomDim
+from american_gut_project.pipeline.process import Biom
 from american_gut_project.paths import paths
 
 LABEL_DICT = {
@@ -42,7 +42,9 @@ class Labels(luigi.Task):
         return FetchData(filename='agp_only_meta.csv', aws_profile=self.aws_profile)
 
     def run(self):
-        metadata = pd.read_csv(self.input().fn)
+        metadata = pd.read_csv(self.input().fn, index_col=0)
+        metadata = metadata.drop('sample_name', axis=1)
+        metadata = metadata.set_index('sample_id')
         ignore_columns = ['index', 'sample_name', 'sample_id']
 
         label_stats = []
@@ -70,7 +72,7 @@ class Labels(luigi.Task):
         label_stats_df = label_stats_df.loc[label_stats_df['percent_in_label_dict'].sort_values(ascending=False).index]
         label_stats_df = label_stats_df.reset_index(drop=True)
 
-        metadata_path, stats_path = self.output()[0].fn, self.output()[1].fn
+        metadata_path, stats_path = self.output()[0].path, self.output()[1].path
         metadata.to_csv(metadata_path)
         label_stats_df.to_csv(stats_path)
 
@@ -87,23 +89,19 @@ class BuildTrainingData(luigi.Task):
     def requires(self):
         return [
             Labels(aws_profile=self.aws_profile),
-            BiomDim(aws_profile=self.aws_profile)
+            Biom(aws_profile=self.aws_profile)
         ]
 
     def run(self):
-        labels, biom = self.input()[0][0].fn, self.input()[1][0].fn
+        labels, biom = self.input()[0][0].fn, self.input()[1].fn
         biom = pd.read_pickle(biom)
         labels = pd.read_csv(labels, index_col=0)
 
-        # Duplicate sample ids for some reason
-        biom = biom.loc[biom['sample_id'].drop_duplicates().index]
-        biom = biom.set_index('sample_id')
-
-        target = labels[['sample_id', self.target]]
+        target = labels[[self.target]]
         target = target.loc[target[self.target].dropna().index]
-        training_data = biom.merge(target, left_on='sample_id', right_on='sample_id')
+        training_data = biom.merge(target, left_index=True, right_index=True)
 
-        training_data.to_pickle(self.output().fn)
+        training_data.to_pickle(self.output().path)
 
 if __name__ == '__main__':
-    luigi.build([BuildTrainingData(aws_profile='dse', target='add_adhd')], local_scheduler=True)
+    luigi.build([BuildTrainingData(aws_profile='dse', target='ibd')], local_scheduler=True)

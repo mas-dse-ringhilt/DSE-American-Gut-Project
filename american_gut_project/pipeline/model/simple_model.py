@@ -18,7 +18,7 @@ class SimpleModel(luigi.Task):
     def output(self):
         output_paths = [
             "{}_simple_model.pkl".format(self.target),
-            "{}_simple_model_metrics.txt".format(self.target)
+            "{}_simple_model_metrics.csv".format(self.target)
         ]
 
         outputs = [paths.output(p) for p in output_paths]
@@ -29,9 +29,6 @@ class SimpleModel(luigi.Task):
 
     def run(self):
         df = pd.read_pickle(self.input().fn)
-
-        df = df.drop(labels='sample_name', axis=1)
-        df = df.set_index('sample_id')
         df = df.fillna(0)
         df = df.to_dense()
 

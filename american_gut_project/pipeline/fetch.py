@@ -21,7 +21,7 @@ class FetchData(luigi.Task):
         session = boto3.session.Session(profile_name=self.aws_profile)
         s3 = session.resource('s3')
 
-        s3.Bucket(BUCKET_NAME).download_file(self.filename, self.output().fn)
+        s3.Bucket(BUCKET_NAME).download_file(self.filename, self.output().path)
 
 
 # def fetch_metadata(profile_name='default'):
