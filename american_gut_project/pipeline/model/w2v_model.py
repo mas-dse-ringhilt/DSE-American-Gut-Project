@@ -2,6 +2,7 @@ import pickle
 
 import luigi
 import pandas as pd
+import numpy as np
 from sklearn.ensemble.forest import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
@@ -172,20 +173,22 @@ class W2VXGBoost(luigi.Task):
     # XGBoost Parameters
     n_estimators = luigi.IntParameter(default=100)
     max_depth = luigi.IntParameter(default=3)
+    scale_pos_weight = luigi.BoolParameter(default=False)
 
     def name(self):
         w2v_params = "{}_{}_{}_{}".format(self.use_value, self.min_count, self.size, self.epochs)
-        xgb_params = "{}_{}".format(self.n_estimators, self.max_depth)
+        xgb_params = "{}_{}_{}".format(self.n_estimators, self.max_depth, self.scale_pos_weight)
         return "{}_w2v_{}_{}".format(self.target, w2v_params, xgb_params)
 
     def param_string(self):
         return "use_value:{} min_count:{} size:{} epochs:{} " \
-               "n_estimators:{} max_depth:{}".format(self.use_value,
-                                                     self.min_count,
-                                                     self.size,
-                                                     self.epochs,
-                                                     self.n_estimators,
-                                                     self.max_depth)
+               "n_estimators:{} max_depth:{} scale_pos_weight:{}".format(self.use_value,
+                                                                         self.min_count,
+                                                                         self.size,
+                                                                         self.epochs,
+                                                                         self.n_estimators,
+                                                                         self.max_depth,
+                                                                         self.scale_pos_weight)
 
     def output(self):
         output_paths = [
@@ -224,10 +227,20 @@ class W2VXGBoost(luigi.Task):
 
         x_train, x_test, y_train, y_test = train_test_split(new_X, y, test_size=0.33, random_state=1)
 
-        clf = xgb.XGBClassifier(
-            n_estimators=self.n_estimators,
-            max_depth=self.max_depth
-        )
+        if self.scale_pos_weight:
+            ratio = float(np.sum(df[self.target] == 0)) / np.sum(df[self.target] == 1)
+            clf = xgb.XGBClassifier(
+                n_estimators=self.n_estimators,
+                max_depth=self.max_depth,
+                scale_pos_weight=ratio
+            )
+
+        else:
+            clf = xgb.XGBClassifier(
+                n_estimators=self.n_estimators,
+                max_depth=self.max_depth
+            )
+
         clf.fit(x_train, y_train)
 
         model_file = self.output()[0].path

@@ -167,13 +167,17 @@ class EmbedBiom(luigi.Task):
         model = gensim.models.Word2Vec.load(self.input()[1].fn)
 
         def embed(row):
-            sentence = row.dropna().index.astype(str)
-
+            sentence = row.dropna()
             word_vectors = []
-            for word in sentence:
+
+            for i in range(len(sentence)):
+                word = str(sentence.index[i])
+                value = int(sentence.iloc[i])
+
                 if word in model.wv:
                     word_vector = model.wv[word]
-                    word_vectors.append(word_vector)
+                    for _ in range(value):
+                        word_vectors.append(word_vector)
 
             return pd.Series(np.mean(word_vectors, axis=0))
 
@@ -186,18 +190,4 @@ class EmbedBiom(luigi.Task):
 if __name__ == '__main__':
     luigi.build([
         EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=5),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=50, epochs=5),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=200, epochs=5),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=300, epochs=5),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=10),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=15),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=20),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=5),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=50, epochs=5),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=200, epochs=5),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=300, epochs=5),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=100, epochs=10),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=100, epochs=15),
-        EmbedBiom(aws_profile='dse', use_value=True, min_count=2, size=100, epochs=20)
-
-    ], workers=3, local_scheduler=True)
+    ], workers=1, local_scheduler=True)

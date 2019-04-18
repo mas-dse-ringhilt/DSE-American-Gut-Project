@@ -31,33 +31,13 @@ class Metrics(luigi.Task):
         simple_model = SimpleModel(aws_profile=self.aws_profile, target=self.target)
         task_list.append(simple_model)
 
-        # w2v_random_forest
-        # for min_count in range(3):
-        #     for size in range(25, 300, 25):
-        #         for epochs in range(5, 25, 5):
-        #             for n_estimators in [10, 20, 30]:
-        #                 for max_depth in [None, 10, 20, 30]:
-        #                     for min_samples_split in [2, 4, 6, 8]:
-        #                         for min_samples_leaf in [1, 2, 5, 10]:
-        #                             task = W2VRandomForest(aws_profile=self.aws_profile,
-        #                                                    target=self.target,
-        #                                                    use_value=True,
-        #                                                    min_count=min_count,
-        #                                                    size=size,
-        #                                                    epochs=epochs,
-        #                                                    n_estimators=n_estimators,
-        #                                                    max_depth=max_depth,
-        #                                                    min_samples_split=min_samples_split,
-        #                                                    min_samples_leaf=min_samples_leaf)
-        #                             task_list.append(task)
-
         for size in [80, 100, 120]:
-            for epochs in [2, 5]:
+            for epochs in [5]:
                 for n_estimators in [10, 12]:
                     for min_samples_split in [2]:
                         for min_samples_leaf in [1]:
-                            for max_depth in [None, 8, 10, 12, 15, 20]:
-                                for min_count in [1, 2]:
+                            for max_depth in [None]:
+                                for min_count in [1]:
                                     task = W2VRandomForest(aws_profile=self.aws_profile,
                                                            target=self.target,
                                                            use_value=True,
@@ -70,8 +50,9 @@ class Metrics(luigi.Task):
                                                            min_samples_leaf=min_samples_leaf)
                                     task_list.append(task)
 
+
         for size in [80, 100, 120]:
-            for epochs in [2, 5]:
+            for epochs in [5]:
                 task = W2VLogisticRegression(aws_profile=self.aws_profile,
                                              target=self.target,
                                              use_value=True,
@@ -80,20 +61,22 @@ class Metrics(luigi.Task):
                                              epochs=epochs)
                 task_list.append(task)
 
-        for size in [80, 100, 120, 140]:
-            for epochs in [5, 10]:
-                for n_estimators in [250, 300, 350]:
-                    for max_depth in [4, 5, 7]:
-                        for min_count in [1, 2]:
-                            task = W2VXGBoost(aws_profile=self.aws_profile,
-                                              target=self.target,
-                                              use_value=True,
-                                              min_count=min_count,
-                                              size=size,
-                                              epochs=epochs,
-                                              n_estimators=n_estimators,
-                                              max_depth=max_depth)
-                            task_list.append(task)
+        for size in [100, 120]:
+            for epochs in [10, 15]:
+                for n_estimators in [300, 350, 400, 450, 500]:
+                    for max_depth in [5, 7]:
+                        for min_count in [1]:
+                            for scale_pos_weight in [True, False]:
+                                task = W2VXGBoost(aws_profile=self.aws_profile,
+                                                  target=self.target,
+                                                  use_value=True,
+                                                  min_count=min_count,
+                                                  size=size,
+                                                  epochs=epochs,
+                                                  n_estimators=n_estimators,
+                                                  max_depth=max_depth,
+                                                  scale_pos_weight=scale_pos_weight)
+                                task_list.append(task)
         return task_list
 
     def run(self):
@@ -119,4 +102,4 @@ if __name__ == '__main__':
 
     luigi.build([
         Metrics(aws_profile='dse', target='ibd'),
-    ], local_scheduler=True, workers=5)
+    ], local_scheduler=True, workers=4)
