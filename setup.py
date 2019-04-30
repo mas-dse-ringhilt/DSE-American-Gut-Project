@@ -17,13 +17,13 @@ setup(
         'sklearn',
         'tables',
         'luigi',
-        'setuptools-docker',
-        'xgboost'
+        'xgboost',
+        'numpy'
     ],
 
-    entry_points={
-        'setuptools_docker.train': [
-            'entrypoint = american_gut_project.pipeline.embedding.w2v:main',
-        ],
-    }
+    # entry_points={
+    #     'setuptools_docker.train': [
+    #         'entrypoint = american_gut_project.pipeline.embedding.w2v:main',
+    #     ],
+    # }
 )

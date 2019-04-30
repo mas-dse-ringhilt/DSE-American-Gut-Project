@@ -46,6 +46,29 @@ from american_gut_project.paths import paths
 #         pickle.dump(sequence, open(sequences_path, 'wb'))
 
 
+def compute_alpha_diversity(row):
+    return row.dropna().count()
+
+
+class AlphaDiversity(luigi.Task):
+    aws_profile = luigi.Parameter(default='default')
+
+    def output(self):
+        filename = "alpha_diversity.pkl"
+        local_file_path = paths.output(filename)
+        return luigi.LocalTarget(local_file_path)
+
+    def requires(self):
+        return Biom(aws_profile=self.aws_profile)
+
+    def run(self):
+        df = pd.read_pickle(self.input().fn)
+
+        alpha_diversity = pd.DataFrame(df.apply(compute_alpha_diversity, axis=1), columns=['alpha_diversity'], dtype=int)
+        alpha_diversity_path = self.output().path
+        alpha_diversity.to_pickle(alpha_diversity_path)
+
+
 class Biom(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
 
@@ -68,5 +91,5 @@ class Biom(luigi.Task):
 
 
 if __name__ == '__main__':
-    luigi.build([Biom(aws_profile='dse')], local_scheduler=True)
+    luigi.build([AlphaDiversity(aws_profile='dse')], local_scheduler=True)
 

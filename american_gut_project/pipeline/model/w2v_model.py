@@ -8,15 +8,19 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
 
+from american_gut_project.paths import paths
+from american_gut_project.pipeline.process import AlphaDiversity
 from american_gut_project.pipeline.dataset import BuildTrainingData
 from american_gut_project.pipeline.embedding.w2v import EmbedBiom
-from american_gut_project.paths import paths
 from american_gut_project.pipeline.metrics import evaluate
 
 
 class W2VRandomForest(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
+
+    # Feature Parameters
+    alpha_diversity = luigi.BoolParameter(default=False)
 
     # W2V Parameters
     use_value = luigi.BoolParameter(default=False)
@@ -31,13 +35,15 @@ class W2VRandomForest(luigi.Task):
     min_samples_leaf = luigi.IntParameter(default=1)
 
     def name(self):
+        feature_params = "{}".format(self.alpha_diversity)
         w2v_params = "{}_{}_{}_{}".format(self.use_value, self.min_count, self.size, self.epochs)
         rf_params = "{}_{}_{}_{}".format(self.n_estimators, self.max_depth, self.min_samples_split, self.min_samples_leaf)
-        return "{}_w2v_{}_{}".format(self.target, w2v_params, rf_params)
+        return "{}_w2v_{}_{}_{}".format(self.target, feature_params, w2v_params, rf_params)
 
     def param_string(self):
-        return "use_value:{} min_count:{} size:{} epochs:{} n_estimators:{} " \
-               "max_depth:{} min_samples_split:{} min_samples_leaf:{}".format(self.use_value,
+        return "alpha_diversity:{} use_value:{} min_count:{} size:{} epochs:{} n_estimators:{} " \
+               "max_depth:{} min_samples_split:{} min_samples_leaf:{}".format(self.alpha_diversity,
+                                                                              self.use_value,
                                                                               self.min_count,
                                                                               self.size,
                                                                               self.epochs,
@@ -56,10 +62,15 @@ class W2VRandomForest(luigi.Task):
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
-        return [
+        task_list = [
             BuildTrainingData(aws_profile=self.aws_profile, target=self.target),
             EmbedBiom(aws_profile=self.aws_profile, use_value=self.use_value, min_count=self.min_count, size=self.size, epochs=self.epochs)
         ]
+
+        if self.alpha_diversity:
+            task_list.append(AlphaDiversity(aws_profile=self.aws_profile))
+
+        return task_list
 
     def run(self):
         biom = pd.read_pickle(self.input()[0].fn)
@@ -67,6 +78,10 @@ class W2VRandomForest(luigi.Task):
 
         target = biom[[self.target]]
         df = w2v.merge(target, left_index=True, right_index=True, how='inner')
+
+        if self.alpha_diversity:
+            alpha = pd.read_pickle(self.input()[2].fn)
+            df = df.merge(alpha, left_index=True, right_index=True, how='inner')
 
         X = df.drop(self.target, axis=1)
         y = df[self.target]
@@ -164,6 +179,9 @@ class W2VXGBoost(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
 
+    # Feature Parameters
+    alpha_diversity = luigi.BoolParameter(default=False)
+
     # W2V Parameters
     use_value = luigi.BoolParameter(default=False)
     min_count = luigi.IntParameter(default=1)
@@ -176,13 +194,15 @@ class W2VXGBoost(luigi.Task):
     scale_pos_weight = luigi.BoolParameter(default=False)
 
     def name(self):
+        feature_params = "{}".format(self.alpha_diversity)
         w2v_params = "{}_{}_{}_{}".format(self.use_value, self.min_count, self.size, self.epochs)
         xgb_params = "{}_{}_{}".format(self.n_estimators, self.max_depth, self.scale_pos_weight)
-        return "{}_w2v_{}_{}".format(self.target, w2v_params, xgb_params)
+        return "{}_w2v_{}_{}_{}".format(self.target, feature_params, w2v_params, xgb_params)
 
     def param_string(self):
-        return "use_value:{} min_count:{} size:{} epochs:{} " \
-               "n_estimators:{} max_depth:{} scale_pos_weight:{}".format(self.use_value,
+        return "alpha_diversity:{} use_value:{} min_count:{} size:{} epochs:{} " \
+               "n_estimators:{} max_depth:{} scale_pos_weight:{}".format(self.alpha_diversity,
+                                                                         self.use_value,
                                                                          self.min_count,
                                                                          self.size,
                                                                          self.epochs,
@@ -200,10 +220,15 @@ class W2VXGBoost(luigi.Task):
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
-        return [
+        task_list = [
             BuildTrainingData(aws_profile=self.aws_profile, target=self.target),
             EmbedBiom(aws_profile=self.aws_profile, use_value=self.use_value, min_count=self.min_count, size=self.size, epochs=self.epochs)
         ]
+
+        if self.alpha_diversity:
+            task_list.append(AlphaDiversity(aws_profile=self.aws_profile))
+
+        return task_list
 
     def run(self):
         biom = pd.read_pickle(self.input()[0].fn)
@@ -211,6 +236,10 @@ class W2VXGBoost(luigi.Task):
 
         target = biom[[self.target]]
         df = w2v.merge(target, left_index=True, right_index=True, how='inner')
+
+        if self.alpha_diversity:
+            alpha = pd.read_pickle(self.input()[2].fn)
+            df = df.merge(alpha, left_index=True, right_index=True, how='inner')
 
         X = df.drop(self.target, axis=1)
 
@@ -257,6 +286,7 @@ if __name__ == '__main__':
     luigi.build([
         W2VRandomForest(aws_profile='dse',
                         target='ibd',
+                        alpha_diversity=True,
                         use_value=True,
                         min_count=1,
                         size=100,

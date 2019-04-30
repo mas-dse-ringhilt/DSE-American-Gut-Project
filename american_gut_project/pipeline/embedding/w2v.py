@@ -1,4 +1,3 @@
-import pkg_resources
 import datetime
 
 import gensim
@@ -8,34 +7,6 @@ import numpy as np
 
 from american_gut_project.pipeline.process import Biom
 from american_gut_project.paths import paths
-
-# def build_microbiome_embeddings():
-#     # pull table from local file
-#     samples = load_dataframe('biom_table.pkl')
-#
-#     # replace nans with zeros
-#     samples = samples.fillna(0)
-#
-#     sentences = []
-#     for sample in range(len(samples) - 1):
-#         try:
-#             sentence = list(samples[sample][samples[sample] > 0].index)
-#             sentences.append([str(x) for x in sentence])
-#         except KeyError:
-#             pass
-#
-#     # shuffle each sample around and append it to the training data
-#     augmentation_constant = 2
-#     generated_sentences = []
-#     for sentence in sentences:
-#         for augmentation in range(augmentation_constant):
-#             shuffle(sentence)
-#             generated_sentences.append(sentence)
-#
-#     model = gensim.models.Word2Vec(generated_sentences, size=100, min_count=2, window=100, workers=4, sg=0)
-#     model.train(generated_sentences, total_examples=len(sentences), epochs=5)
-#     save_w2v_model(model, 'microbiome_w2v.model')
-#
 
 
 class SubSentence(luigi.Task):
@@ -141,7 +112,8 @@ class TrainW2V(luigi.Task):
         sentences = self.input().path
         model = gensim.models.Word2Vec(min_count=self.min_count, size=self.size, workers=4)
         model.build_vocab(corpus_file=sentences)
-        model.train(corpus_file=sentences, total_examples=model.corpus_count, total_words=len(model.wv.index2entity), epochs=self.epochs)
+        model.train(corpus_file=sentences, total_examples=model.corpus_count,
+                    total_words=len(model.wv.index2entity), epochs=self.epochs)
         model.save(self.output().path)
 
 
@@ -160,7 +132,8 @@ class EmbedBiom(luigi.Task):
     def requires(self):
         return [
             Biom(aws_profile=self.aws_profile),
-            TrainW2V(aws_profile=self.aws_profile, use_value=self.use_value, min_count=self.min_count, size=self.size, epochs=self.epochs)
+            TrainW2V(aws_profile=self.aws_profile, use_value=self.use_value,
+                     min_count=self.min_count, size=self.size, epochs=self.epochs)
         ]
 
     def run(self):
