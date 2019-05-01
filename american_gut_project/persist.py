@@ -30,7 +30,7 @@ def save_dataframe(df, filename):
     local_file_path = pkg_resources.resource_filename('american_gut_project.data', filename)
 
     if filename.endswith('csv'):
-        df.to_csv(local_file_path)
+        df.to_csv(local_file_path, index=False)
 
     elif filename.endswith('hdf'):
         df.to_hdf(local_file_path, key='df')
