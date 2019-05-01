@@ -13,11 +13,15 @@ from american_gut_project.pipeline.process import AlphaDiversity
 from american_gut_project.pipeline.dataset import BuildTrainingData
 from american_gut_project.pipeline.embedding.w2v import EmbedBiom
 from american_gut_project.pipeline.metrics import evaluate
+from american_gut_project.pipeline.model.util import balance
 
 
 class W2VRandomForest(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
+
+    # Data Parameters
+    balance = luigi.BoolParameter(default=False)
 
     # Feature Parameters
     alpha_diversity = luigi.BoolParameter(default=False)
@@ -35,14 +39,16 @@ class W2VRandomForest(luigi.Task):
     min_samples_leaf = luigi.IntParameter(default=1)
 
     def name(self):
+        data_params = "{}".format(self.balance)
         feature_params = "{}".format(self.alpha_diversity)
         w2v_params = "{}_{}_{}_{}".format(self.use_value, self.min_count, self.size, self.epochs)
         rf_params = "{}_{}_{}_{}".format(self.n_estimators, self.max_depth, self.min_samples_split, self.min_samples_leaf)
-        return "{}_w2v_{}_{}_{}".format(self.target, feature_params, w2v_params, rf_params)
+        return "{}_w2v_{}_{}_{}_{}".format(self.target, data_params, feature_params, w2v_params, rf_params)
 
     def param_string(self):
-        return "alpha_diversity:{} use_value:{} min_count:{} size:{} epochs:{} n_estimators:{} " \
+        return "alpha_diversity:{} balance: {} use_value:{} min_count:{} size:{} epochs:{} n_estimators:{} " \
                "max_depth:{} min_samples_split:{} min_samples_leaf:{}".format(self.alpha_diversity,
+                                                                              self.balance,
                                                                               self.use_value,
                                                                               self.min_count,
                                                                               self.size,
@@ -64,7 +70,8 @@ class W2VRandomForest(luigi.Task):
     def requires(self):
         task_list = [
             BuildTrainingData(aws_profile=self.aws_profile, target=self.target),
-            EmbedBiom(aws_profile=self.aws_profile, use_value=self.use_value, min_count=self.min_count, size=self.size, epochs=self.epochs)
+            EmbedBiom(aws_profile=self.aws_profile, use_value=self.use_value, min_count=self.min_count,
+                      size=self.size, epochs=self.epochs)
         ]
 
         if self.alpha_diversity:
@@ -87,6 +94,11 @@ class W2VRandomForest(luigi.Task):
         y = df[self.target]
 
         x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=1)
+
+        if self.balance:
+            sample_df = balance(x_train, y_train, self.target)
+            x_train = sample_df.drop(self.target, axis=1)
+            y_train = sample_df[self.target]
 
         clf = RandomForestClassifier(
             n_estimators=self.n_estimators,
@@ -112,6 +124,9 @@ class W2VLogisticRegression(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
 
+    # Data Parameters
+    balance = luigi.BoolParameter(default=False)
+
     # W2V Parameters
     use_value = luigi.BoolParameter(default=False)
     min_count = luigi.IntParameter(default=1)
@@ -119,15 +134,17 @@ class W2VLogisticRegression(luigi.Task):
     epochs = luigi.IntParameter(default=5)
 
     def name(self):
+        data_params = "{}".format(self.balance)
         w2v_params = "{}_{}_{}_{}".format(self.use_value, self.min_count, self.size, self.epochs)
         lr_params = ""
-        return "{}_w2v_{}_{}".format(self.target, w2v_params, lr_params)
+        return "{}_w2v_{}_{}_{}".format(self.target, data_params, w2v_params, lr_params)
 
     def param_string(self):
-        return "use_value:{} min_count:{} size:{} epochs:{}".format(self.use_value,
-                                                                    self.min_count,
-                                                                    self.size,
-                                                                    self.epochs)
+        return "use_value:{} balance:{} min_count:{} size:{} epochs:{}".format(self.use_value,
+                                                                               self.balance,
+                                                                               self.min_count,
+                                                                               self.size,
+                                                                               self.epochs)
 
     def output(self):
         output_paths = [
@@ -156,6 +173,11 @@ class W2VLogisticRegression(luigi.Task):
 
         x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=1)
 
+        if self.balance:
+            sample_df = balance(x_train, y_train, self.target)
+            x_train = sample_df.drop(self.target, axis=1)
+            y_train = sample_df[self.target]
+
         clf = LogisticRegression(
             n_jobs=-1,
             penalty='l2',
@@ -179,6 +201,9 @@ class W2VXGBoost(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
 
+    # Data Parameters
+    balance = luigi.BoolParameter(default=False)
+
     # Feature Parameters
     alpha_diversity = luigi.BoolParameter(default=False)
 
@@ -194,14 +219,16 @@ class W2VXGBoost(luigi.Task):
     scale_pos_weight = luigi.BoolParameter(default=False)
 
     def name(self):
+        data_params = "{}".format(self.balance)
         feature_params = "{}".format(self.alpha_diversity)
         w2v_params = "{}_{}_{}_{}".format(self.use_value, self.min_count, self.size, self.epochs)
         xgb_params = "{}_{}_{}".format(self.n_estimators, self.max_depth, self.scale_pos_weight)
-        return "{}_w2v_{}_{}_{}".format(self.target, feature_params, w2v_params, xgb_params)
+        return "{}_w2v_{}_{}_{}_{}".format(self.target, data_params, feature_params, w2v_params, xgb_params)
 
     def param_string(self):
-        return "alpha_diversity:{} use_value:{} min_count:{} size:{} epochs:{} " \
+        return "alpha_diversity:{} balance:{}, use_value:{} min_count:{} size:{} epochs:{} " \
                "n_estimators:{} max_depth:{} scale_pos_weight:{}".format(self.alpha_diversity,
+                                                                         self.balance,
                                                                          self.use_value,
                                                                          self.min_count,
                                                                          self.size,
@@ -222,7 +249,8 @@ class W2VXGBoost(luigi.Task):
     def requires(self):
         task_list = [
             BuildTrainingData(aws_profile=self.aws_profile, target=self.target),
-            EmbedBiom(aws_profile=self.aws_profile, use_value=self.use_value, min_count=self.min_count, size=self.size, epochs=self.epochs)
+            EmbedBiom(aws_profile=self.aws_profile, use_value=self.use_value, min_count=self.min_count,
+                      size=self.size, epochs=self.epochs)
         ]
 
         if self.alpha_diversity:
@@ -256,6 +284,11 @@ class W2VXGBoost(luigi.Task):
 
         x_train, x_test, y_train, y_test = train_test_split(new_X, y, test_size=0.33, random_state=1)
 
+        if self.balance:
+            sample_df = balance(x_train, y_train, self.target)
+            x_train = sample_df.drop(self.target, axis=1)
+            y_train = sample_df[self.target]
+
         if self.scale_pos_weight:
             ratio = float(np.sum(df[self.target] == 0)) / np.sum(df[self.target] == 1)
             clf = xgb.XGBClassifier(
@@ -284,16 +317,13 @@ class W2VXGBoost(luigi.Task):
 
 if __name__ == '__main__':
     luigi.build([
-        W2VRandomForest(aws_profile='dse',
-                        target='ibd',
-                        alpha_diversity=True,
-                        use_value=True,
-                        min_count=1,
-                        size=100,
-                        epochs=5,
-                        n_estimators=10,
-                        max_depth=None,
-                        min_samples_split=2,
-                        min_samples_leaf=1),
+        W2VXGBoost(aws_profile='dse',
+                   target='ibd',
+                   alpha_diversity=True,
+                   balance=True,
+                   use_value=True,
+                   min_count=1,
+                   size=100,
+                   epochs=5),
 
     ], local_scheduler=True, workers=1)

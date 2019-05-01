@@ -1,5 +1,3 @@
-import pkg_resources
-
 import luigi
 import pandas as pd
 

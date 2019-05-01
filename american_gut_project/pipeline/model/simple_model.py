@@ -1,4 +1,3 @@
-import pkg_resources
 import pickle
 
 import luigi
@@ -9,11 +8,13 @@ from sklearn.model_selection import train_test_split
 from american_gut_project.pipeline.dataset import BuildTrainingData
 from american_gut_project.paths import paths
 from american_gut_project.pipeline.metrics import evaluate
+from american_gut_project.pipeline.model.util import balance
 
 
 class SimpleModel(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
+    balance = luigi.BoolParameter(default=False)
 
     def output(self):
         output_paths = [
@@ -36,6 +37,12 @@ class SimpleModel(luigi.Task):
         y = df[self.target]
 
         x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=1)
+
+        if self.balance:
+            sample_df = balance(x_train, y_train, self.target)
+            x_train = sample_df.drop(self.target, axis=1)
+            y_train = sample_df[self.target]
+
         clf = LogisticRegression(penalty='l2', C=1e-3, solver='lbfgs')
         clf.fit(x_train, y_train)
 
@@ -43,7 +50,8 @@ class SimpleModel(luigi.Task):
         with open(model_file, 'wb') as f:
             pickle.dump(clf, f)
 
-        metric_df = evaluate(clf, x_train, x_test, y_train, y_test, "{}_simple_model.pkl".format(self.target))
+        metric_df = evaluate(clf, x_train, x_test, y_train, y_test, "{}_{}_simple_model.pkl".format(self.target,
+                                                                                                    self.balance))
 
         metrics_file = self.output()[1].path
         metric_df.to_csv(metrics_file, index=False)
