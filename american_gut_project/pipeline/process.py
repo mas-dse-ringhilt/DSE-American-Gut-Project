@@ -50,6 +50,14 @@ def compute_alpha_diversity(row):
     return row.dropna().count()
 
 
+def split_sample_id(sample_name):
+    sample_id = sample_name.split('.')[1]
+    try:
+        return str(int(sample_id))
+    except ValueError:
+        return None
+
+
 class AlphaDiversity(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
 
@@ -78,18 +86,38 @@ class Biom(luigi.Task):
         return luigi.LocalTarget(local_file_path)
 
     def requires(self):
-        return FetchData(filename='2.21.rar1000_clean_biom.pkl', aws_profile=self.aws_profile)
+        return [
+            FetchData(filename='4.10.rar1000.biom_data.pkl', aws_profile=self.aws_profile),
+            FetchData(filename='sample_ids_with_host.csv', aws_profile=self.aws_profile)
+        ]
 
     def run(self):
-        df = pd.read_pickle(self.input().fn)
-        df = df.drop('sample_name', axis=1)
-        df = df.loc[df['sample_id'].drop_duplicates().index]
-        df = df.set_index('sample_id')
+        biom = pd.read_pickle(self.input()[0].fn)
 
+        if 'sample_id' not in biom.columns:
+            sample_ids = []
+            for i in range(len(biom)):
+                sample_name = biom['sample_name'].astype(str).iloc[i]
+
+                sample_id = split_sample_id(sample_name)
+                sample_ids.append(sample_id)
+
+            biom['sample_id'] = sample_ids
+            biom = biom.loc[biom['sample_id'].dropna().index]
+
+        biom = biom.drop('sample_name', axis=1)
+        biom = biom.loc[biom['sample_id'].drop_duplicates().index]
+        biom = biom.set_index('sample_id')
+
+        # samples = pd.read_csv(self.input()[1].fn)
+        # samples = samples.loc[samples['host_subject_id'].dropna().drop_duplicates().index]
+        # sample_ids = samples['sample_id']
+        #
+        # biom = biom.loc[sample_ids]
         biom_dim_path = self.output().path
-        df.to_pickle(biom_dim_path)
+        biom.to_pickle(biom_dim_path)
 
 
 if __name__ == '__main__':
-    luigi.build([AlphaDiversity(aws_profile='dse')], local_scheduler=True)
+    luigi.build([Biom(aws_profile='dse')], local_scheduler=True)
 

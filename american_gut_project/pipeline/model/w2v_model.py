@@ -60,11 +60,11 @@ class W2VRandomForest(luigi.Task):
 
     def output(self):
         output_paths = [
-            "{}_rf_model.pkl".format(self.name()),
-            "{}_rf_model_metrics.csv".format(self.name())
+            ("{}_rf_model.pkl".format(self.name()), 'model'),
+            ("{}_rf_model_metrics.csv".format(self.name()), 'metrics')
         ]
 
-        outputs = [paths.output(p) for p in output_paths]
+        outputs = [paths.output(p[0], p[1]) for p in output_paths]
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
@@ -148,11 +148,11 @@ class W2VLogisticRegression(luigi.Task):
 
     def output(self):
         output_paths = [
-            "{}_lr_model.pkl".format(self.name()),
-            "{}_lr_model_metrics.csv".format(self.name())
+            ("{}_lr_model.pkl".format(self.name()), 'model'),
+            ("{}_lr_model_metrics.csv".format(self.name()), 'metrics')
         ]
 
-        outputs = [paths.output(p) for p in output_paths]
+        outputs = [paths.output(p[0], p[1]) for p in output_paths]
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
@@ -218,6 +218,9 @@ class W2VXGBoost(luigi.Task):
     max_depth = luigi.IntParameter(default=3)
     scale_pos_weight = luigi.BoolParameter(default=False)
 
+    def training_data_name(self):
+        return "{}_xgb_training_data.pkl".format(self.name())
+
     def name(self):
         data_params = "{}".format(self.balance)
         feature_params = "{}".format(self.alpha_diversity)
@@ -236,14 +239,15 @@ class W2VXGBoost(luigi.Task):
                                                                          self.n_estimators,
                                                                          self.max_depth,
                                                                          self.scale_pos_weight)
-
     def output(self):
         output_paths = [
-            "{}_xgb_model.pkl".format(self.name()),
-            "{}_xgb_model_metrics.csv".format(self.name())
+            ("{}_xgb_model.pkl".format(self.name()), 'model'),
+            ("{}_xgb_model_metrics.csv".format(self.name()), 'metrics'),
+            (self.training_data_name(), 'training_data'),
+
         ]
 
-        outputs = [paths.output(p) for p in output_paths]
+        outputs = [paths.output(p[0], p[1]) for p in output_paths]
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
@@ -268,6 +272,9 @@ class W2VXGBoost(luigi.Task):
         if self.alpha_diversity:
             alpha = pd.read_pickle(self.input()[2].fn)
             df = df.merge(alpha, left_index=True, right_index=True, how='inner')
+
+        training_data_file = self.output()[2].path
+        df.to_pickle(training_data_file)
 
         X = df.drop(self.target, axis=1)
 
@@ -310,7 +317,8 @@ class W2VXGBoost(luigi.Task):
             pickle.dump(clf, f)
 
         name = model_file.split('/')[-1]
-        metric_df = evaluate(clf, x_train, x_test, y_train, y_test, name, self.param_string())
+        metric_df = evaluate(clf, x_train, x_test, y_train, y_test, name,
+                             self.training_data_name(), 'w2v', self.param_string())
         metrics_file = self.output()[1].path
 
         metric_df.to_csv(metrics_file, index=False)
@@ -318,12 +326,12 @@ class W2VXGBoost(luigi.Task):
 if __name__ == '__main__':
     luigi.build([
         W2VXGBoost(aws_profile='dse',
-                   target='ibd',
-                   alpha_diversity=True,
+                   target='feces',
+                   alpha_diversity=False,
                    balance=True,
                    use_value=True,
                    min_count=1,
                    size=100,
                    epochs=5),
 
-    ], local_scheduler=True, workers=1)
+    ], local_scheduler=True, workers=6)

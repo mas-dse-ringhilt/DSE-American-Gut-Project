@@ -76,7 +76,7 @@ class Sentences(luigi.Task):
 
     def requires(self):
         task_list = []
-        for i in range(0, 15000, 1000):
+        for i in range(0, 20000, 1000):
             task = SubSentence(aws_profile=self.aws_profile,
                                use_value=self.use_value,
                                min_value=i,
@@ -163,4 +163,4 @@ class EmbedBiom(luigi.Task):
 if __name__ == '__main__':
     luigi.build([
         EmbedBiom(aws_profile='dse', use_value=True, min_count=1, size=100, epochs=5),
-    ], workers=1, local_scheduler=True)
+    ], workers=5, local_scheduler=True)

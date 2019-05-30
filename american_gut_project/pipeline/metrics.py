@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 
 
-def evaluate(clf, x_train, x_test, y_train, y_test, name, params=None):
+def evaluate(clf, x_train, x_test, y_train, y_test, name, training_data_name, embedding, params=None):
     predictions = clf.predict(x_train)
     train_tn, train_fp, train_fn, train_tp = confusion_matrix(y_train, predictions).ravel()
     train_accuracy = accuracy_score(y_train, predictions)
@@ -19,7 +19,9 @@ def evaluate(clf, x_train, x_test, y_train, y_test, name, params=None):
 
     result_dict = {
         'name': [name],
+        'embedding': [embedding],
         'params': [params],
+        'training_data_name': [training_data_name],
         'train_true_negative': [train_tn],
         'train_false_positive': [train_fp],
         'train_false_negative': [train_fn],

@@ -11,8 +11,8 @@ class local(object):
         return os.path.join(os.path.dirname(os.path.dirname(root.__file__)), 'data', channel, filename)
 
     @staticmethod
-    def output(filename):
-        return os.path.join(os.path.dirname(os.path.dirname(root.__file__)), 'data', 'model', filename)
+    def output(filename, dir=''):
+        return os.path.join(os.path.dirname(os.path.dirname(root.__file__)), 'data', dir, filename)
 
 
 class sagemaker(object):

@@ -16,13 +16,20 @@ class SimpleModel(luigi.Task):
     target = luigi.Parameter()
     balance = luigi.BoolParameter(default=False)
 
+    def name(self):
+        return "{}_{}_simple_model.pkl".format(self.target, self.balance)
+
+    def training_data_name(self):
+        return "{}_{}_simple_training_data.pkl".format(self.target, self.balance)
+
     def output(self):
         output_paths = [
-            "{}_simple_model.pkl".format(self.target),
-            "{}_simple_model_metrics.csv".format(self.target)
+            ("{}_simple_model.pkl".format(self.target), 'model'),
+            ("{}_simple_model_metrics.csv".format(self.target), 'metrics'),
+            (self.training_data_name(), 'training_data'),
         ]
 
-        outputs = [paths.output(p) for p in output_paths]
+        outputs = [paths.output(p[0], p[1]) for p in output_paths]
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
@@ -32,6 +39,9 @@ class SimpleModel(luigi.Task):
         df = pd.read_pickle(self.input().fn)
         df = df.fillna(0)
         df = df.to_dense()
+
+        training_data_file = self.output()[2].path
+        df.to_pickle(training_data_file)
 
         X = df.drop(self.target, axis=1)
         y = df[self.target]
@@ -50,12 +60,12 @@ class SimpleModel(luigi.Task):
         with open(model_file, 'wb') as f:
             pickle.dump(clf, f)
 
-        metric_df = evaluate(clf, x_train, x_test, y_train, y_test, "{}_{}_simple_model.pkl".format(self.target,
-                                                                                                    self.balance))
+        metric_df = evaluate(clf, x_train, x_test, y_train, y_test,
+                             self.name(), self.training_data_name(), 'simple')
 
         metrics_file = self.output()[1].path
         metric_df.to_csv(metrics_file, index=False)
 
 
 if __name__ == '__main__':
-    luigi.build([SimpleModel(aws_profile='dse', target='ibd')], local_scheduler=True)
+    luigi.build([SimpleModel(aws_profile='dse', target='feces')], workers=1, local_scheduler=True)

@@ -24,6 +24,36 @@ def clean_label(label):
     return cleaned_label
 
 
+class BodySite(luigi.Task):
+    aws_profile = luigi.Parameter(default='default')
+
+    def output(self):
+        output_paths = [
+            'body_site.csv'
+        ]
+
+        outputs = [paths.output(p) for p in output_paths]
+        return [luigi.LocalTarget(output) for output in outputs]
+
+    def requires(self):
+        return FetchData(filename='agp_only_meta.csv',
+                         aws_profile=self.aws_profile)
+
+    def run(self):
+        metadata = pd.read_csv(self.input().fn, index_col=0)
+        metadata = metadata.drop('sample_name', axis=1)
+        metadata = metadata.set_index('sample_id')
+
+        possible_sites = ['feces', 'saliva', 'sebum']
+
+        site_dict = {}
+        for site in possible_sites:
+            site_dict[site] = metadata['env_material'].apply(lambda x: 1 if x == site else 0)
+
+        site_df = pd.DataFrame(site_dict)
+        site_path = self.output()[0].path
+        site_df.to_csv(site_path)
+
 class Labels(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
 
@@ -37,10 +67,11 @@ class Labels(luigi.Task):
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
-        return FetchData(filename='agp_only_meta.csv', aws_profile=self.aws_profile)
+        return [FetchData(filename='agp_only_meta.csv', aws_profile=self.aws_profile),
+                BodySite(aws_profile=self.aws_profile)]
 
     def run(self):
-        metadata = pd.read_csv(self.input().fn, index_col=0)
+        metadata = pd.read_csv(self.input()[0].fn, index_col=0)
         metadata = metadata.drop('sample_name', axis=1)
         metadata = metadata.set_index('sample_id')
         ignore_columns = ['index', 'sample_name', 'sample_id']
@@ -70,6 +101,9 @@ class Labels(luigi.Task):
         label_stats_df = label_stats_df.loc[label_stats_df['percent_in_label_dict'].sort_values(ascending=False).index]
         label_stats_df = label_stats_df.reset_index(drop=True)
 
+        body_site_df = pd.read_csv(self.input()[1][0].fn, index_col=0)
+        metadata = metadata.merge(body_site_df, left_index=True, right_index=True)
+
         metadata_path, stats_path = self.output()[0].path, self.output()[1].path
         metadata.to_csv(metadata_path)
         label_stats_df.to_csv(stats_path)
@@ -93,7 +127,9 @@ class BuildTrainingData(luigi.Task):
     def run(self):
         labels, biom = self.input()[0][0].fn, self.input()[1].fn
         biom = pd.read_pickle(biom)
-        labels = pd.read_csv(labels, index_col=0)
+        labels = pd.read_csv(labels)
+        labels['sample_id'] = labels['sample_id'].astype(str)
+        labels = labels.set_index('sample_id')
 
         target = labels[[self.target]]
         target = target.loc[target[self.target].dropna().index]
@@ -102,4 +138,4 @@ class BuildTrainingData(luigi.Task):
         training_data.to_pickle(self.output().path)
 
 if __name__ == '__main__':
-    luigi.build([BuildTrainingData(aws_profile='dse', target='ibd')], local_scheduler=True)
+    luigi.build([BuildTrainingData(aws_profile='dse', target='feces')], local_scheduler=True)
