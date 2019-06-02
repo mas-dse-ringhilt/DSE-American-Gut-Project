@@ -6,6 +6,7 @@ from sklearn.decomposition import PCA
 
 from american_gut_project.pipeline.model.w2v_model import W2VRandomForest, W2VLogisticRegression, W2VXGBoost
 from american_gut_project.pipeline.model.simple_model import SimpleModel
+from american_gut_project.pipeline.model.hyperbolic import HyperbolicModel
 from american_gut_project.pipeline.fetch import FetchData
 from american_gut_project.paths import paths
 
@@ -21,42 +22,14 @@ class Metrics(luigi.Task):
         for balance in [True, False]:
             simple_model = SimpleModel(aws_profile=self.aws_profile, target=self.target, balance=balance)
             task_list.append(simple_model)
-        #
-        # for balance in [True, False]:
-        #     for size in [80, 100, 120]:
-        #         for epochs in [5]:
-        #             for n_estimators in [10, 12]:
-        #                 for min_samples_split in [2]:
-        #                     for min_samples_leaf in [1]:
-        #                         for max_depth in [None]:
-        #                             for min_count in [1]:
-        #                                 task = W2VRandomForest(aws_profile=self.aws_profile,
-        #                                                        target=self.target,
-        #                                                        use_value=True,
-        #                                                        balance=balance,
-        #                                                        min_count=min_count,
-        #                                                        size=size,
-        #                                                        epochs=epochs,
-        #                                                        n_estimators=n_estimators,
-        #                                                        max_depth=max_depth,
-        #                                                        min_samples_split=min_samples_split,
-        #                                                        min_samples_leaf=min_samples_leaf)
-        #                                 task_list.append(task)
 
-        for balance in [True]:
-            for size in [100, 120]:
-                for epochs in [5]:
-                    task = W2VLogisticRegression(aws_profile=self.aws_profile,
-                                                 target=self.target,
-                                                 use_value=True,
-                                                 balance=balance,
-                                                 min_count=1,
-                                                 size=size,
-                                                 epochs=epochs)
-                    task_list.append(task)
+        # hyperbolic
+        hyperbolic_model = HyperbolicModel(aws_profile=self.aws_profile, target=self.target, balance=True)
+        task_list.append(hyperbolic_model)
 
+        # w2v
         for balance in [True]:
-            for size in [60, 80, 100, 120]:
+            for size in [60, 80, 100]:
                 for epochs in [10, 15]:
                     for n_estimators in [130, 150, 200]:
                         for max_depth in [2, 3, 4]:
@@ -89,7 +62,7 @@ class Analysis(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
 
-    models = ['w2v', 'simple']
+    models = ['w2v', 'simple', 'hyperbolic']
 
     def output(self):
         output_paths = []
@@ -101,7 +74,6 @@ class Analysis(luigi.Task):
 
     def requires(self):
         return [FetchData(filename='agp_only_meta.csv', aws_profile=self.aws_profile)]
-
 
     def run(self):
         metadata = pd.read_csv(self.input()[0].fn, index_col=0)
@@ -155,6 +127,10 @@ if __name__ == '__main__':
     # luigi.build([
     #     Metrics(aws_profile='dse', target=target),
     # ], workers=4, local_scheduler=True)
+
+    luigi.build([
+        Metrics(aws_profile='dse', target=target),
+    ], workers=4, local_scheduler=True)
 
     luigi.build([
         Analysis(aws_profile='dse', target=target),
