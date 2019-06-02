@@ -12,6 +12,18 @@ setup(
     # Insert dependencies list here
     install_requires=[
         'boto3',
-        'pandas'
+        'pandas',
+        'gensim',
+        'sklearn',
+        'tables',
+        'luigi',
+        'xgboost',
+        'numpy'
     ],
+
+    # entry_points={
+    #     'setuptools_docker.train': [
+    #         'entrypoint = american_gut_project.pipeline.embedding.w2v:main',
+    #     ],
+    # }
 )

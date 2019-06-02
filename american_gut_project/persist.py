@@ -1,11 +1,11 @@
 import pkg_resources
+import pickle
 
 import boto3
 import pandas as pd
 from gensim.models import Word2Vec
 
 
-BUCKET_NAME = 'dse-cohort4-group1'
 
 
 def download_file(filename, profile_name):
@@ -37,6 +37,16 @@ def save_dataframe(df, filename):
 
     elif filename.endswith('pkl'):
         df.to_pickle(local_file_path)
+
+
+def save_pickle(obj, filename):
+    local_file_path = pkg_resources.resource_filename('american_gut_project.data', filename)
+    pickle.dump(obj, open(local_file_path, 'wb'))
+
+
+def load_pickle(filename):
+    local_file_path = pkg_resources.resource_filename('american_gut_project.data', filename)
+    return pickle.load(open(local_file_path, 'rb'))
 
 
 def load_dataframe(filename):
