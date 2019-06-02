@@ -10,3 +10,4 @@ preprocessing, imputation, and eventually ML outputs as a trial/experiment.
 will take that .csv in, and run imputation techniques to try and fill in missing data, as well as showing a trial to see MSE results on 40 samples
 3. The last notebook, machineLearningSurveyTests.ipynb will take just metadata survey after the cleanup and imputation, and will
 run random forests on it to try and predict various target variables and output results.
+4. The biom*machineLearning notebook uses data from the pipeline as well as metadata, but did not finish testing
