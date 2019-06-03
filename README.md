@@ -24,13 +24,28 @@ The cleaned output data sources are used as the input data into our pipeline. Th
 
 ### Pipeline
 
-The pipeline is under the american_gut_project folder, and creates a library as such.
+The pipeline is under the american_gut_project_pipeline folder, and creates a library as such.
 
-Simple steps to install:
+#### Installation
+1. Acquire AWS Credentials to pull files from S3. Make sure they are saved into `~/.aws/credentials` file
+2. From the root of the git repo, run `pip install -e .` which installs the packages needed and the newly made library
 
-1. From the root of the git repo, run `pip install -e .` which installs the packages needed and the newly made library
-2. Run a test python file, like dataset.py, which preprocesses data
-3. Run one of the larger pipelines, like under american_gut_project/pipeline/model (american_gut_project.pipeline.model), to run a simple_model.py or others
+#### Executing
+ The entire pipeline can be executed by running `agp-pipeline` in the terminal. If the AWS credentials are not in the
+`[default]` block within the credential file, the command can point to another credential like this `agp-pipeline -a 
+<aws_profile_name>`
+
+Alternatively, all the output and intermediate data artifacts are stored within S3. Running `agp-pull` (or with `-a`) 
+will sync the local file system with the data artifacts on S3. There is also an `agp-push` command that uploads the 
+files to S3. 
+
+The data artifacts from the pipeline are stored under the `data` directory
+
+It is also possible to run single transformations (or tasks) by editing the main function in an individual file and 
+executing it from the command line or through an IDE. Note that since luigi is handling the dependency management of 
+the artifacts, if the output artifacts of a task exist in the `data` directory, luigi won't recompute the task unless 
+the file is moved or deleted.
+
 
 ### Pure Metadata Survey Analysis
 
