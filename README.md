@@ -2,6 +2,11 @@
 
 ## Repository Info
 
+### Data Cleaning / Integration
+The 'data_join_workflow' directory contains a jupyter notebook that pulls in data from all 3 data sources (raw metadata .txt file, biom .pkl file, and drug questionnaire .csv). The notebook cleans the data, including the extraction / creation of a consistent 'sample_id' which is joinable across the 3 datasets. The notebook outputs cleaned and joinable versions of the different data sources, ready for analysis.
+
+Please see the README.md in the 'data_join_workflow' directory for more information
+
 ### Pipeline
 
 The pipeline is under the american_gut_project folder, and creates a library as such.
