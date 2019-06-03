@@ -44,7 +44,7 @@ Imputation techniques with SoftImpute, KNN, and Iterative Imputer along with tes
 
 Consult the QIIME2 and Qiita documentation that can be found online here:
 https://qiime2.org/
-https://qiita.ucsd.edu/
+https://qiita.ucsd.edu/ (AGP here: https://qiita.ucsd.edu/study/description/10317)
 
 Metagenomics Info: http://www.metagenomics.wiki/pdf/definition
 
