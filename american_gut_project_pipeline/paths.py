@@ -1,7 +1,7 @@
 import os
 import pkg_resources
 
-import american_gut_project as root
+import american_gut_project_pipeline as root
 
 
 class local(object):

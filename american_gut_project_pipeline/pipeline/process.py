@@ -4,8 +4,8 @@ import pickle
 import luigi
 import pandas as pd
 
-from american_gut_project.pipeline.fetch import FetchData
-from american_gut_project.paths import paths
+from american_gut_project_pipeline.pipeline.fetch import FetchData
+from american_gut_project_pipeline.paths import paths
 
 # Deprecated with new data
 # class BiomDim(luigi.Task):

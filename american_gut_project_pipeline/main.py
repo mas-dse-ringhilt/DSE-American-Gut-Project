@@ -5,10 +5,10 @@ import pkg_resources
 
 import luigi
 
-from american_gut_project.pipeline.evaluate import Analysis
+from american_gut_project_pipeline.pipeline.evaluate import Analysis
 
 S3_PIPELINE_OUTPUT_PATH = "s3://dse-cohort4-group1/pipeline"
-LOCAL_PIPELINE_PATH = os.path.join(os.path.dirname(pkg_resources.resource_filename('american_gut_project', '')), 'data')
+LOCAL_PIPELINE_PATH = os.path.join(os.path.dirname(pkg_resources.resource_filename('american_gut_project_pipeline', '')), 'data')
 
 
 def arg_parse_pipeline():

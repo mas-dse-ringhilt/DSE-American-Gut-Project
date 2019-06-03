@@ -126,7 +126,7 @@ data_pre_new_data
 pre_fix_w2v_data
 old_models_and_data/*
 !data_other/__init__.py
-american_gut_project/model/*
-!american_gut_project/model/__init__.py
+american_gut_project_pipeline/model/*
+!american_gut_project_pipeline/model/__init__.py
 old_data/
 !*/__init__.py

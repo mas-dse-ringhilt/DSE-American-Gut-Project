@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
 # Body Site Classification
-from american_gut_project.persist import load_dataframe, download_file, save_dataframe, upload_file
+from american_gut_project_pipeline.persist import load_dataframe, download_file, save_dataframe, upload_file
 import pandas as pd
 import numpy as np
 import luigi
-from american_gut_project.pipeline.fetch import FetchData
-from american_gut_project.paths import paths
+from american_gut_project_pipeline.pipeline.fetch import FetchData
+from american_gut_project_pipeline.paths import paths
 import re
 
 

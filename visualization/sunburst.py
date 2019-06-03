@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from american_gut_project.persist import load_dataframe, download_file
+from american_gut_project_pipeline.persist import load_dataframe, download_file
 import plotly
 import plotly.graph_objs as go
 

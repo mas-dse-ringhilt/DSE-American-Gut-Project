@@ -5,28 +5,27 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-from american_gut_project.pipeline.dataset import BuildTrainingData
-from american_gut_project.paths import paths
-from american_gut_project.pipeline.metrics import evaluate
-from american_gut_project.pipeline.embedding.hyperbolic import Hyperbolic
-from american_gut_project.pipeline.model.util import balance
+from american_gut_project_pipeline.pipeline.dataset import BuildTrainingData
+from american_gut_project_pipeline.paths import paths
+from american_gut_project_pipeline.pipeline.metrics import evaluate
+from american_gut_project_pipeline.pipeline.model.util import balance
 
 
-class HyperbolicModel(luigi.Task):
+class SimpleModel(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
     balance = luigi.BoolParameter(default=False)
 
     def name(self):
-        return "{}_{}_hyperbolic_lr_model.pkl".format(self.target, self.balance)
+        return "{}_{}_simple_model.pkl".format(self.target, self.balance)
 
     def training_data_name(self):
-        return "{}_{}_hyperbolic_training_data.pkl".format(self.target, self.balance)
+        return "{}_{}_simple_training_data.pkl".format(self.target, self.balance)
 
     def output(self):
         output_paths = [
-            ("{}_hyperbolic_model.pkl".format(self.target), 'model'),
-            ("{}_hyperbolic_model_metrics.csv".format(self.target), 'metrics'),
+            ("{}_simple_model.pkl".format(self.target), 'model'),
+            ("{}_simple_model_metrics.csv".format(self.target), 'metrics'),
             (self.training_data_name(), 'training_data'),
         ]
 
@@ -34,18 +33,12 @@ class HyperbolicModel(luigi.Task):
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
-        return [
-            BuildTrainingData(aws_profile=self.aws_profile, target=self.target),
-            Hyperbolic(aws_profile=self.aws_profile)
-        ]
+        return BuildTrainingData(aws_profile=self.aws_profile, target=self.target)
 
     def run(self):
-        hyperbolic = pd.read_pickle(self.input()[1][1].path)
-
-        training_data = pd.read_pickle(self.input()[0].path)
-        training_data = training_data[[self.target]]
-
-        df = hyperbolic.merge(training_data, left_index=True, right_index=True)
+        df = pd.read_pickle(self.input().fn)
+        df = df.fillna(0)
+        df = df.to_dense()
 
         training_data_file = self.output()[2].path
         df.to_pickle(training_data_file)
@@ -68,11 +61,11 @@ class HyperbolicModel(luigi.Task):
             pickle.dump(clf, f)
 
         metric_df = evaluate(clf, x_train, x_test, y_train, y_test,
-                             self.name(), self.training_data_name(), 'hyperbolic')
+                             self.name(), self.training_data_name(), 'simple')
 
         metrics_file = self.output()[1].path
         metric_df.to_csv(metrics_file, index=False)
 
 
 if __name__ == '__main__':
-    luigi.build([HyperbolicModel(aws_profile='dse', target='body_site_target')], workers=1, local_scheduler=True)
+    luigi.build([SimpleModel(aws_profile='dse', target='body_site_target')], workers=1, local_scheduler=True)

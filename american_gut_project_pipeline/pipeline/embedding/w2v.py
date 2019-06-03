@@ -5,8 +5,8 @@ import luigi
 import pandas as pd
 import numpy as np
 
-from american_gut_project.pipeline.process import Biom
-from american_gut_project.paths import paths
+from american_gut_project_pipeline.pipeline.process import Biom
+from american_gut_project_pipeline.paths import paths
 
 
 class SubSentence(luigi.Task):

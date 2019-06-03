@@ -8,12 +8,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
 
-from american_gut_project.paths import paths
-from american_gut_project.pipeline.process import AlphaDiversity
-from american_gut_project.pipeline.dataset import BuildTrainingData
-from american_gut_project.pipeline.embedding.w2v import EmbedBiom
-from american_gut_project.pipeline.metrics import evaluate
-from american_gut_project.pipeline.model.util import balance
+from american_gut_project_pipeline.paths import paths
+from american_gut_project_pipeline.pipeline.process import AlphaDiversity
+from american_gut_project_pipeline.pipeline.dataset import BuildTrainingData
+from american_gut_project_pipeline.pipeline.embedding.w2v import EmbedBiom
+from american_gut_project_pipeline.pipeline.metrics import evaluate
+from american_gut_project_pipeline.pipeline.model.util import balance
 
 
 class W2VLogisticRegression(luigi.Task):

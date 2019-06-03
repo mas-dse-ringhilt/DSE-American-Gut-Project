@@ -1,4 +1,4 @@
-from american_gut_project.persist import load_dataframe, download_file, save_dataframe
+from american_gut_project_pipeline.persist import load_dataframe, download_file, save_dataframe
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split

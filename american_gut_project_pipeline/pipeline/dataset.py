@@ -1,9 +1,9 @@
 import luigi
 import pandas as pd
 
-from american_gut_project.pipeline.fetch import FetchData
-from american_gut_project.pipeline.process import Biom
-from american_gut_project.paths import paths
+from american_gut_project_pipeline.pipeline.fetch import FetchData
+from american_gut_project_pipeline.pipeline.process import Biom
+from american_gut_project_pipeline.paths import paths
 
 LABEL_DICT = {
     'Yes': 1,

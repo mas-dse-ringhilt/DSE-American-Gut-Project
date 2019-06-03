@@ -4,11 +4,11 @@ import luigi
 import pandas as pd
 from sklearn.decomposition import PCA
 
-from american_gut_project.pipeline.model.w2v_model import W2VLogisticRegression
-from american_gut_project.pipeline.model.simple_model import SimpleModel
-from american_gut_project.pipeline.model.hyperbolic import HyperbolicModel
-from american_gut_project.pipeline.fetch import FetchData
-from american_gut_project.paths import paths
+from american_gut_project_pipeline.pipeline.model.w2v_model import W2VLogisticRegression
+from american_gut_project_pipeline.pipeline.model.simple_model import SimpleModel
+from american_gut_project_pipeline.pipeline.model.hyperbolic import HyperbolicModel
+from american_gut_project_pipeline.pipeline.fetch import FetchData
+from american_gut_project_pipeline.paths import paths
 
 
 class Metrics(luigi.Task):

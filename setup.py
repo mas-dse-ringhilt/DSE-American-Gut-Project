@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     # Package information
-    name='american_gut_project',
+    name='american_gut_project_pipeline',
     version='0.0.1',
 
     # Package data
@@ -24,9 +24,9 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'agp-pipeline=american_gut_project.main:arg_parse_pipeline',
-            'agp-push=american_gut_project.main:arg_parse_push',
-            'agp-pull=american_gut_project.main:arg_parse_pull',
+            'agp-pipeline=american_gut_project_pipeline.main:arg_parse_pipeline',
+            'agp-push=american_gut_project_pipeline.main:arg_parse_push',
+            'agp-pull=american_gut_project_pipeline.main:arg_parse_pull',
         ],
     }
 

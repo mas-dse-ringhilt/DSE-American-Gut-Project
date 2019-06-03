@@ -3,7 +3,7 @@ import pkg_resources
 import boto3
 import luigi
 
-from american_gut_project.paths import paths
+from american_gut_project_pipeline.paths import paths
 
 BUCKET_NAME = 'dse-cohort4-group1'
 
