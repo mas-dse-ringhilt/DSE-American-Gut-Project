@@ -5,10 +5,10 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-from american_gut_project.pipeline.dataset import BuildTrainingData
-from american_gut_project.paths import paths
-from american_gut_project.pipeline.metrics import evaluate
-from american_gut_project.pipeline.model.util import balance
+from american_gut_project_pipeline.pipeline.dataset import BuildTrainingData
+from american_gut_project_pipeline.paths import paths
+from american_gut_project_pipeline.pipeline.metrics import evaluate
+from american_gut_project_pipeline.pipeline.model.util import balance
 
 
 class SimpleModel(luigi.Task):
@@ -68,4 +68,4 @@ class SimpleModel(luigi.Task):
 
 
 if __name__ == '__main__':
-    luigi.build([SimpleModel(aws_profile='dse', target='feces')], workers=1, local_scheduler=True)
+    luigi.build([SimpleModel(aws_profile='dse', target='body_site_target')], workers=1, local_scheduler=True)

@@ -2,14 +2,14 @@ import pickle
 
 import luigi
 import pandas as pd
-from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-from american_gut_project.pipeline.dataset import BuildTrainingData
-from american_gut_project.paths import paths
-from american_gut_project.pipeline.metrics import evaluate
-from american_gut_project.pipeline.embedding.hyperbolic import Hyperbolic
-from american_gut_project.pipeline.model.util import balance
+from american_gut_project_pipeline.pipeline.dataset import BuildTrainingData
+from american_gut_project_pipeline.paths import paths
+from american_gut_project_pipeline.pipeline.metrics import evaluate
+from american_gut_project_pipeline.pipeline.embedding.hyperbolic import Hyperbolic
+from american_gut_project_pipeline.pipeline.model.util import balance
 
 
 class HyperbolicModel(luigi.Task):
@@ -18,7 +18,7 @@ class HyperbolicModel(luigi.Task):
     balance = luigi.BoolParameter(default=False)
 
     def name(self):
-        return "{}_{}_hyperbolic_svc_model.pkl".format(self.target, self.balance)
+        return "{}_{}_hyperbolic_lr_model.pkl".format(self.target, self.balance)
 
     def training_data_name(self):
         return "{}_{}_hyperbolic_training_data.pkl".format(self.target, self.balance)
@@ -60,7 +60,7 @@ class HyperbolicModel(luigi.Task):
             x_train = sample_df.drop(self.target, axis=1)
             y_train = sample_df[self.target]
 
-        clf = SVC()
+        clf = LogisticRegression(penalty='l2', C=1e-3, solver='lbfgs')
         clf.fit(x_train, y_train)
 
         model_file = self.output()[0].path
@@ -75,4 +75,4 @@ class HyperbolicModel(luigi.Task):
 
 
 if __name__ == '__main__':
-    luigi.build([HyperbolicModel(aws_profile='dse', target='feces')], workers=1, local_scheduler=True)
+    luigi.build([HyperbolicModel(aws_profile='dse', target='body_site_target')], workers=1, local_scheduler=True)

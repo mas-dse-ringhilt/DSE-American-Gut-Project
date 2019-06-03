@@ -7,7 +7,7 @@ import itertools
 import numpy as np
 from gensim.models.poincare import PoincareModel
 
-from american_gut_project.persist import save_w2v_model, load_dataframe
+from american_gut_project_pipeline.persist import save_w2v_model, load_dataframe
 
 
 def build_microbiome_embeddings():
