@@ -32,6 +32,14 @@ Simple steps to install:
 2. Run a test python file, like dataset.py, which preprocesses data
 3. Run one of the larger pipelines, like under american_gut_project/pipeline/model (american_gut_project.pipeline.model), to run a simple_model.py or others
 
+### Pure Metadata Survey Analysis
+
+The directory `VioAndMetadata_Cleaning` contains analysis on purely metadata survey information and no microbiome to investigate 
+what information might already be achieved with surveys and data science.  Please read the README and investigate notebooks for
+more information.
+
+Imputation techniques with SoftImpute, KNN, and Iterative Imputer along with tests are located within this directory
+
 ## References
 
 Consult the QIIME2 and Qiita documentation that can be found online here:
