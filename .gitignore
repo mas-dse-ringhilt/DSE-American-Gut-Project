@@ -128,4 +128,5 @@ old_models_and_data/*
 !data_other/__init__.py
 american_gut_project/model/*
 !american_gut_project/model/__init__.py
-data/
+old_data/
+!*/__init__.py

@@ -7,12 +7,7 @@ import numpy as np
 import luigi
 from american_gut_project.pipeline.fetch import FetchData
 from american_gut_project.paths import paths
-from sklearn.decomposition import PCA
-from sklearn.svm import SVC
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, accuracy_score
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+import re
 
 
 def split_sampleid(global_id):
@@ -21,6 +16,81 @@ def split_sampleid(global_id):
         return str(int(sample_id))
     except ValueError:
         return None
+
+
+def get_species_id(x):
+    return re.search('[0-9]*', x).group(0)
+
+
+class HyperbolicPreproccessing(luigi.Task):
+    aws_profile = luigi.Parameter(default='default')
+
+    def output(self):
+        output_paths = [
+            'speciesid_to_tax.csv',
+            'taxonomy_97_transitive_closure.csv'
+        ]
+
+        outputs = [paths.output(p) for p in output_paths]
+        return [luigi.LocalTarget(output) for output in outputs]
+
+    def requires(self):
+        return [
+            FetchData(filename='taxonomy_97_lorentz_embedding.csv', aws_profile=self.aws_profile),
+            FetchData(filename='taxonomy.csv', aws_profile=self.aws_profile),
+
+        ]
+
+    def run(self):
+        taxonomies = pd.read_csv(self.input()[1].path, index_col=0)
+
+        transitive_closure = []
+        for taxonomy in range(len(taxonomies) - 1):
+            hierarchy = taxonomies.iloc[taxonomy].values[0]
+            # extract information
+            KINGDOM = re.search('(?<=k__).*?(?=;)', hierarchy).group(0)
+            PYLUM = re.search('(?<=p__).*?(?=;)', hierarchy).group(0)
+            CLASS = re.search('(?<=c__).*?(?=;)', hierarchy).group(0)
+            ORDER = re.search('(?<=o__).*?(?=;)', hierarchy).group(0)
+            FAMILY = re.search('(?<=f__).*?(?=;)', hierarchy).group(0)
+            GENUS = re.search('(?<=g__).*?(?=;)', hierarchy).group(0)
+            SPECIES = re.search('(?<=^).*?(?=\t)', hierarchy).group(0)
+            # start with species, then continue down branch till nothing
+            ancestors = [KINGDOM, PYLUM, CLASS, ORDER, FAMILY, GENUS]
+            desendents = [PYLUM, CLASS, ORDER, FAMILY, GENUS, SPECIES]
+            # if descendent does not exist end with species ID
+            for ancestor, descendent in zip(ancestors, desendents):
+                if descendent == '':
+                    transitive_closure.append([ancestor, SPECIES])
+                    break
+                else:
+                    transitive_closure.append([ancestor, descendent])
+
+        df = pd.DataFrame(transitive_closure, columns=['id1', 'id2'])
+        df = df.drop_duplicates()
+        df['weight'] = 1
+
+        # # save and upload file for transitive closure
+        # save_dataframe(df, 'taxonomy_97_transitive_closure.csv')
+        # upload_file('taxonomy_97_transitive_closure.csv', 'default')
+        output_path = self.output()[1].path
+        df.to_csv(output_path)
+
+        taxonomies = pd.read_csv(self.input()[1].path, sep=';',
+                                 names=['K', 'P', 'C', 'O', 'F', 'G', 'S'])
+
+        # extract greengenes species ID
+        get_species_id = lambda x: re.search('[0-9]*', x).group(0)
+        taxonomies['species_id'] = taxonomies['K'].apply(lambda x: str(get_species_id(x)))
+
+        # clean up phylum and class descriptions
+        taxonomies['phylum'] = taxonomies['P'].apply(lambda x: x.split('__')[1])
+        taxonomies['class'] = taxonomies['C'].apply(lambda x: x.split('__')[1])
+
+        taxonomies = taxonomies[['species_id', 'phylum', 'class']]
+
+        output_path = self.output()[0].path
+        taxonomies.to_csv(output_path)
 
 
 class Hyperbolic(luigi.Task):
@@ -39,7 +109,7 @@ class Hyperbolic(luigi.Task):
         return [
             FetchData(filename='4.10.rar1000.biom_data.pkl', aws_profile=self.aws_profile),
             FetchData(filename='taxonomy_97_lorentz_embedding.csv', aws_profile=self.aws_profile),
-            FetchData(filename='speciesid_to_tax.csv', aws_profile=self.aws_profile),
+            HyperbolicPreproccessing(aws_profile=self.aws_profile),
             FetchData(filename='agp_only_meta.csv', aws_profile=self.aws_profile)
         ]
 
@@ -56,7 +126,7 @@ class Hyperbolic(luigi.Task):
         df_embeddings = pd.read_csv(self.input()[1].fn, index_col=0)
 
         # load species ID to taxonomy mapping for visualization
-        taxonomies = pd.read_csv(self.input()[2].fn)
+        taxonomies = pd.read_csv(self.input()[2][0].fn, index_col=0)
         taxonomies['species_id'] = taxonomies['species_id'].apply(lambda x: str(x))
 
         # apply embeddings
@@ -113,45 +183,6 @@ class Hyperbolic(luigi.Task):
         output_path = self.output()[1].path
         df_embedded.to_pickle(output_path)
 
-
-        # '''
-        #  AGP Metadata:
-        #  Join embeddings with body site data for classification
-        #  '''
-        # df_meta = pd.read_csv(self.input()[3].fn)
-        # df_meta = df_meta[['anonymized_name', 'env_material']]
-        # df_meta = df_meta.dropna(axis=0)
-        #
-        # df_meta.index = df_meta['anonymized_name'].apply(lambda x: str(int(x)))
-        # df_meta = df_meta.drop(columns='anonymized_name')
-        #
-        # # inner join on embeddings
-        # df_embedded = df_embedded.merge(df_meta, how='inner', left_index=True, right_index=True)
-        #
-        # output_path = self.output()[1].path
-        # df_embedded.to_pickle(output_path)
-
-
-            # label = df_embedded['env_material']
-            # df_embedded = df_embedded.drop(columns='env_material')
-            #
-
-# # body site classification
-# x_train, x_test, y_train, y_test = train_test_split(df_embedded, label, test_size=0.33, random_state=0)
-#
-# # classification
-# clf = SVC(kernel='linear')
-# clf.fit(x_train, y_train)
-# y_pred_train = clf.predict(x_train)
-# y_pred_test = clf.predict(x_test)
-#
-# # train
-# print(classification_report(y_pred_train, y_train))
-# print(accuracy_score(y_pred_train, y_train))
-#
-# # test
-# print(classification_report(y_pred_test, y_test))
-# print(accuracy_score(y_pred_test, y_test))
 
 if __name__ == '__main__':
     luigi.build([Hyperbolic(aws_profile='dse')], workers=1, local_scheduler=True)

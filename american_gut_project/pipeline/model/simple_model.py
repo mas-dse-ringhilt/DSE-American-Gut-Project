@@ -68,4 +68,4 @@ class SimpleModel(luigi.Task):
 
 
 if __name__ == '__main__':
-    luigi.build([SimpleModel(aws_profile='dse', target='feces')], workers=1, local_scheduler=True)
+    luigi.build([SimpleModel(aws_profile='dse', target='body_site_target')], workers=1, local_scheduler=True)

@@ -44,7 +44,6 @@ def build_sentences(df, file_handler, use_value=False):
             print(i)
 
         if use_value:
-            print(i)
             samples_with_values = df.iloc[i].dropna()
 
             samples = []
@@ -60,7 +59,6 @@ def build_sentences(df, file_handler, use_value=False):
             file_handler.write(sentence + '\n')
 
         else:
-            print(i)
             sentence = ' '.join(df.iloc[i].dropna().index.astype(str))
             file_handler.write(sentence + '\n')
 

@@ -4,7 +4,7 @@ import luigi
 import pandas as pd
 from sklearn.decomposition import PCA
 
-from american_gut_project.pipeline.model.w2v_model import W2VRandomForest, W2VLogisticRegression, W2VXGBoost
+from american_gut_project.pipeline.model.w2v_model import W2VLogisticRegression
 from american_gut_project.pipeline.model.simple_model import SimpleModel
 from american_gut_project.pipeline.model.hyperbolic import HyperbolicModel
 from american_gut_project.pipeline.fetch import FetchData
@@ -15,39 +15,33 @@ class Metrics(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
     target = luigi.Parameter()
 
+    def output(self):
+        output_paths = [
+            "{}_combined_metrics.csv".format(self.target)
+        ]
+        outputs = [paths.output(p, 'metrics') for p in output_paths]
+        return [luigi.LocalTarget(output) for output in outputs]
+
     def requires(self):
         task_list = []
 
         # simple model
-        for balance in [True, False]:
-            simple_model = SimpleModel(aws_profile=self.aws_profile, target=self.target, balance=balance)
-            task_list.append(simple_model)
+        simple_model = SimpleModel(aws_profile=self.aws_profile, target=self.target)
+        task_list.append(simple_model)
 
         # hyperbolic
-        hyperbolic_model = HyperbolicModel(aws_profile=self.aws_profile, target=self.target, balance=True)
+        hyperbolic_model = HyperbolicModel(aws_profile=self.aws_profile, target=self.target)
         task_list.append(hyperbolic_model)
 
         # w2v
-        for balance in [True]:
-            for size in [60, 80, 100]:
-                for epochs in [10, 15]:
-                    for n_estimators in [130, 150, 200]:
-                        for max_depth in [2, 3, 4]:
-                            for min_count in [1]:
-                                for scale_pos_weight in [True, False]:
-                                    for alpha_diversity in [True, False]:
-                                        task = W2VXGBoost(aws_profile=self.aws_profile,
-                                                          target=self.target,
-                                                          use_value=True,
-                                                          balance=balance,
-                                                          alpha_diversity=alpha_diversity,
-                                                          min_count=min_count,
-                                                          size=size,
-                                                          epochs=epochs,
-                                                          n_estimators=n_estimators,
-                                                          max_depth=max_depth,
-                                                          scale_pos_weight=scale_pos_weight)
-                                        task_list.append(task)
+        w2v_model = W2VLogisticRegression(aws_profile=self.aws_profile,
+                                          target=self.target,
+                                          use_value=True,
+                                          min_count=1,
+                                          size=80,
+                                          epochs=10)
+        task_list.append(w2v_model)
+
         return task_list
 
     def run(self):
@@ -56,6 +50,10 @@ class Metrics(luigi.Task):
             metric_file = metric_file[1]
             df = pd.read_csv(metric_file.fn)
             df_list.append(df)
+
+        df = pd.concat(df_list, ignore_index=True)
+        output_path = self.output()[0].path
+        df.to_csv(output_path, index=None)
 
 
 class Analysis(luigi.Task):
@@ -73,7 +71,8 @@ class Analysis(luigi.Task):
         return [luigi.LocalTarget(output) for output in outputs]
 
     def requires(self):
-        return [FetchData(filename='agp_only_meta.csv', aws_profile=self.aws_profile)]
+        return [FetchData(filename='agp_only_meta.csv', aws_profile=self.aws_profile),
+                Metrics(aws_profile=self.aws_profile, target=self.target)]
 
     def run(self):
         metadata = pd.read_csv(self.input()[0].fn, index_col=0)
@@ -81,17 +80,7 @@ class Analysis(luigi.Task):
         metadata = metadata.set_index('sample_id')
         metadata = metadata[['env_material']]
 
-        file_path = paths.output('', 'metrics')
-
-        file_list = os.listdir(file_path)
-
-        df_list = []
-        for f in file_list:
-            if f.startswith(self.target):
-                df = pd.read_csv(os.path.join(file_path, f))
-                df_list.append(df)
-
-        metrics = pd.concat(df_list, ignore_index=True)
+        metrics = pd.read_csv(self.input()[1][0].fn)
 
         for i, model in enumerate(self.models):
             df = metrics[metrics['embedding'] == model]
@@ -104,7 +93,7 @@ class Analysis(luigi.Task):
             print('Training data shape', training_data.shape)
 
             idx = training_data.index
-            X = training_data.drop(target, axis=1)
+            X = training_data.drop(self.target, axis=1)
 
             pca = PCA(n_components=3)
             transformed = pd.DataFrame(pca.fit_transform(X), index=idx)
@@ -114,24 +103,8 @@ class Analysis(luigi.Task):
             output_path = self.output()[i].path
             transformed.to_csv(output_path)
 
-
-
 if __name__ == '__main__':
-    target = 'feces'
-    # output_file = "{}_metrics.csv".format(target)
-    # file_path = paths.output(output_file)
-    #
-    # if os.path.exists(file_path):
-    #     os.remove(file_path)
-    #
-    # luigi.build([
-    #     Metrics(aws_profile='dse', target=target),
-    # ], workers=4, local_scheduler=True)
-
-    luigi.build([
-        Metrics(aws_profile='dse', target=target),
-    ], workers=4, local_scheduler=True)
-
+    target = 'body_site_target'
     luigi.build([
         Analysis(aws_profile='dse', target=target),
     ], workers=4, local_scheduler=True)

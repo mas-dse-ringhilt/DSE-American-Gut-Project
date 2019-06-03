@@ -50,9 +50,12 @@ class BodySite(luigi.Task):
         for site in possible_sites:
             site_dict[site] = metadata['env_material'].apply(lambda x: 1 if x == site else 0)
 
+        site_dict['body_site_target'] = metadata['env_material'].apply(lambda x: x if x in possible_sites else None)
+
         site_df = pd.DataFrame(site_dict)
         site_path = self.output()[0].path
         site_df.to_csv(site_path)
+
 
 class Labels(luigi.Task):
     aws_profile = luigi.Parameter(default='default')
@@ -138,4 +141,6 @@ class BuildTrainingData(luigi.Task):
         training_data.to_pickle(self.output().path)
 
 if __name__ == '__main__':
-    luigi.build([BuildTrainingData(aws_profile='dse', target='feces')], local_scheduler=True)
+    # luigi.build([Labels(aws_profile='dse')], local_scheduler=True)
+
+    luigi.build([BuildTrainingData(aws_profile='dse', target='body_site_target')], local_scheduler=True)

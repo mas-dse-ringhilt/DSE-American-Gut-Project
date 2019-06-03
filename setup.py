@@ -11,6 +11,7 @@ setup(
 
     # Insert dependencies list here
     install_requires=[
+        'awscli',
         'boto3',
         'pandas',
         'gensim',
@@ -18,12 +19,15 @@ setup(
         'tables',
         'luigi',
         'xgboost',
-        'numpy'
+        'numpy',
     ],
 
-    # entry_points={
-    #     'setuptools_docker.train': [
-    #         'entrypoint = american_gut_project.pipeline.embedding.w2v:main',
-    #     ],
-    # }
+    entry_points={
+        'console_scripts': [
+            'agp-pipeline=american_gut_project.main:arg_parse_pipeline',
+            'agp-push=american_gut_project.main:arg_parse_push',
+            'agp-pull=american_gut_project.main:arg_parse_pull',
+        ],
+    }
+
 )
