@@ -10,10 +10,10 @@ Two different ingestion notebooks exist within the directory, one pulls from 'gr
 You can also look at 'Notebooks/redbiom/AG_example.ipynb' for a more detailed walkthrough example of the biom ingestion process as well'
 
 ### Alpha Diversity
-The 'biom_data_ingest' directory also contains 'greengenes_alpha_diversity.ipynb' which calculates phylogenic alpha diversity of the biom data samples, using the greengenes 97 tree. 
+The 'biom_data_ingest' directory also contains 'greengenes_alpha_diversity.ipynb' which calculates phylogenetic alpha diversity of the biom data samples, using the greengenes 97 tree. 
 
 ### Beta Diversity / pcOa
-The 'beta_diversity_pcOa' directory contains notebooks which calculate phylogenic beta diversity between samples using the greengenes 97 tree, as well as running principal coordinates analysis on the beta diversity matrix results.
+The 'beta_diversity_pcOa' directory contains notebooks which calculate phylogenetic beta diversity between samples using the greengenes 97 tree, as well as running principal coordinates analysis on the beta diversity matrix results.
 
 ### Data Cleaning / Integration
 The 'data_join_workflow' directory contains a jupyter notebook that pulls in data from all 3 data sources (raw metadata .txt file, biom .pkl file, and drug questionnaire .csv). The notebook cleans the data, including the extraction / creation of a consistent 'sample_id' which is joinable across the 3 datasets. The notebook outputs cleaned and joinable versions of the different data sources, ready for analysis.
