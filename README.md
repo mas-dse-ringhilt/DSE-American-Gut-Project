@@ -42,6 +42,8 @@ Metagenomics Info: http://www.metagenomics.wiki/pdf/definition
 
 BIOM format: http://biom-format.org/
 
+AGP notebooks: https://github.com/knightlab-analyses/american-gut-analyses/tree/master/ipynb
+
 #### Papers
 
 American Gut: https://msystems.asm.org/content/3/3/e00031-18
