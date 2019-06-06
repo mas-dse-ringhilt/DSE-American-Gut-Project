@@ -47,6 +47,9 @@ the artifacts, if the output artifacts of a task exist in the `data` directory, 
 the file is moved or deleted.
 
 
+### Interactive Dashboard
+A full interactive dashboard demonstrating american gut project embedding results can be found here: https://github.com/mas-dse-ringhilt/american_gut_capstone_dashboard
+
 ### Pure Metadata Survey Analysis
 
 The directory `VioAndMetadata_Cleaning` contains analysis on purely metadata survey information and no microbiome to investigate 
