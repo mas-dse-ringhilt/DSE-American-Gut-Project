@@ -12,7 +12,7 @@ You can also look at 'Notebooks/redbiom/AG_example.ipynb' for a more detailed wa
 ### Alpha Diversity
 The 'biom_data_ingest' directory also contains 'greengenes_alpha_diversity.ipynb' which calculates phylogenetic alpha diversity of the biom data samples, using the greengenes 97 tree. 
 
-### Beta Diversity / pcOa
+### Beta Diversity / PCoA
 The 'beta_diversity_pcOa' directory contains notebooks which calculate phylogenetic beta diversity between samples using the greengenes 97 tree, as well as running principal coordinates analysis on the beta diversity matrix results.
 
 ### Data Cleaning / Integration
